@@ -258,6 +258,12 @@ Existing shops without saved settings receive the defaults above without a data 
 
 Workers are deactivated, never deleted. Changing a worker's mobile reassigns that shop membership and its existing history to the new verified mobile account; the old account immediately loses that membership. The edit screen explains this behavior. Duplicate workers are rejected; reactivate the original instead.
 
+## Team attendance calendar and Hishob help
+
+Owners and managers can open **Register → Choose attendance date**, move between months, and tap a day to see the whole team’s attendance. Status counts and search apply to that date. **Back to today** restores live marking. **Update / history** opens the selected person on the same date, with editing subject to existing permissions. Future dates are disabled; people who had not joined yet are excluded. Inactive people with an attendance record remain visible. Not marked is never treated as absent.
+
+Tap the information icons in Hishob for plain-language explanations and examples of opening cash, transaction types, payment sources, optional categories, billing reports, closing cash, bank/home removals and corrections. Help expands inline and does not change entered amounts.
+
 ## Attendance rules
 
 - Days use the **shop timezone**; timestamps are UTC-aware and displayed in the shop timezone.
@@ -290,6 +296,7 @@ All paths below are prefixed with `/api`; all except the public login/onboarding
 | POST | `/shops/{shop_id}/workers` | Owner/authorised manager adds `{name, mobile}` |
 | PATCH | `/shops/{shop_id}/workers/{worker_id}` | Owner/authorised manager updates `{name, mobile, active}` |
 | GET | `/shops/{shop_id}/attendance/today` | Worker and manager register with per-person `can_mark` / `can_edit` permissions |
+| GET | `/shops/{shop_id}/attendance/register?day=YYYY-MM-DD` | Owner/manager team register for a past or current shop-local date |
 | GET | `/shops/{shop_id}/workers/{worker_id}/attendance?month=YYYY-MM` | Owner/authorised manager monthly history |
 | PUT | `/shops/{shop_id}/workers/{worker_id}/attendance` | Owner/authorised manager sets `{date, status, note}` |
 | GET | `/shops/{shop_id}/me/attendance/today` | Worker/manager own today and active shift |
@@ -348,8 +355,8 @@ The npm dependency override pins `xcode`’s transitive `uuid` to 11.1.1, retain
 
 ## Verified in this workspace
 
-- 99 backend integration tests passed against real MongoDB, including browser cookies, CSRF, session limits, mobile-number changes, native bearer compatibility and total-only billing.
-- 16 workflow/formatting Playwright checks cover attendance, account flows, the cash register, history, search and currency editing, cash-count/billing modes, total-only reports and monthly sales. 4 additional PWA checks cover production-export installation metadata, persistent login, offline recovery, drafts, safe updates and unconfirmed saves.
+- 100 backend integration tests passed against real MongoDB, including browser cookies, CSRF, session limits, mobile-number changes, native bearer compatibility and total-only billing.
+- 19 workflow/formatting Playwright checks cover attendance, account flows, the cash register, history, search and currency editing, cash-count/billing modes, total-only reports, monthly sales, contextual help, opening-cash refresh and the team attendance calendar. 4 additional PWA checks cover production-export installation metadata, persistent login, offline recovery, drafts, safe updates and unconfirmed saves.
 - TypeScript, ESLint, Prettier, Ruff lint/format checks passed.
 - Expo Doctor: 21/21 checks passed.
 - iOS, Android, and web production JavaScript bundles exported successfully.

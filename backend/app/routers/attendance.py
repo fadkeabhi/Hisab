@@ -76,16 +76,37 @@ def history(db, shop, worker_id, month, joined):
 
 @router.get("/attendance/today")
 def today_attendance(shop_id: str, identity=Depends(current_identity), db=Depends(get_db)):
+    return register_for_date(shop_id, None, identity, db)
+
+
+@router.get("/attendance/register")
+def attendance_register(
+    shop_id: str,
+    day: date = Query(),
+    identity=Depends(current_identity),
+    db=Depends(get_db),
+):
+    return register_for_date(shop_id, day, identity, db)
+
+
+def register_for_date(shop_id, requested_day, identity, db):
     actor, shop = shop_access(shop_id, db, identity, {"OWNER", "MANAGER", "ADMIN"})
-    day = str(shop_today(shop))
+    today = shop_today(shop)
+    selected_day = requested_day or today
+    if selected_day > today:
+        raise HTTPException(422, "Attendance cannot be viewed for a future date")
+    day = str(selected_day)
     records = {r["worker_id"]: public(r) for r in db.attendance.find({"shop_id": shop_id, "date": day})}
     rows = []
     for member in db.memberships.find({"shop_id": shop_id, "role": {"$in": ["WORKER", "MANAGER", "ADMIN"]}}):
-        if member["active"] or member["_id"] in records:
+        joined = member["created_at"].astimezone(ZoneInfo(shop["timezone"])).date()
+        if (member["active"] and joined <= selected_day) or member["_id"] in records:
             rows.append(
                 {
                     "worker": worker_view(db, member),
                     **attendance_permissions(actor, shop, member),
+                    "can_mark": selected_day == today
+                    and attendance_permissions(actor, shop, member)["can_mark"],
                     "active_shift": public(
                         db.attendance.find_one(
                             {"shop_id": shop_id, "worker_id": member["_id"], "is_open": True}
@@ -96,6 +117,7 @@ def today_attendance(shop_id: str, identity=Depends(current_identity), db=Depend
             )
     return {
         "date": day,
+        "today": str(today),
         "timezone": shop["timezone"],
         "rows": rows,
         "settings": settings_for(shop),

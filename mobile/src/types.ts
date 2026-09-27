@@ -147,7 +147,7 @@ export type Routes = HishobRoutes & {
   ShopSettings: undefined;
   WorkerForm: { worker?: Worker; kind?: 'WORKER' | 'MANAGER' } | undefined;
   TodayAttendance: undefined;
-  WorkerHistory: { worker: Worker };
+  WorkerHistory: { worker: Worker; date?: string };
   MyAttendance: undefined;
   Profile: undefined;
 };

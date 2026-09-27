@@ -85,9 +85,9 @@ function Editor({
 
 export function WorkerHistory({ route }: NativeStackScreenProps<Routes, 'WorkerHistory'>) {
   const { selected } = useAuth();
-  const { worker } = route.params;
-  const [month, setMonth] = useState(monthInZone(selected!.shop.timezone));
-  const [day, setDay] = useState<string | null>(null);
+  const { worker, date } = route.params;
+  const [month, setMonth] = useState(date?.slice(0, 7) || monthInZone(selected!.shop.timezone));
+  const [day, setDay] = useState<string | null>(date || null);
   const [editing, setEditing] = useState<Attendance | null>(null);
   const resource = useResource<History>(
     `/shops/${selected!.shop_id}/workers/${worker.id}/attendance?month=${month}`,

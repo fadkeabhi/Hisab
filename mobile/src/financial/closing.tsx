@@ -1,9 +1,10 @@
+import { HelpButton as Button, FinancialHelp } from './help';
 import React, { useState } from 'react';
 import { Text } from 'react-native';
 import { useAuth } from '../auth';
 import { useAction } from '../hooks';
 import { useUnsavedChanges } from '../pwa';
-import { Button, Card, ErrorText, Field, styles } from '../components/ui';
+import { Card, ErrorText, Field, styles } from '../components/ui';
 import { FilterChips } from '../components/ListControls';
 import { Breakdown, Galla, MoneyField } from './components';
 import { decimal, money, parseMoney, signedPaise } from './money';
@@ -109,6 +110,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
         </Text>
         {mode === 'BILLING' && (
           <>
+            <FinancialHelp topic="Billing report" />
             <FilterChips
               label="Billing report"
               value={billingInput}
@@ -122,6 +124,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
               <>
                 <MoneyField label="Total sales from billing" value={total} onChange={setTotal} />
                 <Text style={styles.label}>UPI/card and unpaid credit totals</Text>
+                <FinancialHelp topic="Non-cash sales" />
                 <FilterChips
                   label="Non-cash sales"
                   value={knowNonCash ? 'KNOWN' : 'UNKNOWN'}

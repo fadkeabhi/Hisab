@@ -1,3 +1,5 @@
+import { InfoHelp } from '../components/InfoHelp';
+import { HelpButton as Button, FinancialHelp, financialHelp, transactionHelp } from './help';
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -5,7 +7,6 @@ import { useUnsavedChanges } from '../pwa';
 import { useAuth } from '../auth';
 import { useAction, useResource } from '../hooks';
 import {
-  Button,
   Card,
   EmptyState,
   ErrorText,
@@ -25,7 +26,9 @@ export { HishobHistory } from './history';
 
 function NewDay({ initial, refresh }: { initial: TodayHishob; refresh: () => Promise<void> }) {
   const { api, selected } = useAuth();
-  const [opening, setOpening] = useState(initial.suggested_opening_cash || '');
+  // Follow refreshed carry-forward cash until the owner explicitly edits it.
+  const [openingDraft, setOpening] = useState<string | null>(null);
+  const opening = openingDraft ?? initial.suggested_opening_cash ?? '';
   const [reason, setReason] = useState('');
   const action = useAction();
   useUnsavedChanges(opening !== (initial.suggested_opening_cash || '') || !!reason);
@@ -117,7 +120,11 @@ export function HishobToday({ navigation }: NativeStackScreenProps<Routes, 'Hish
         />
       )}
       {resource.data && !day && (
-        <NewDay key={resource.data.date} initial={resource.data} refresh={resource.refresh} />
+        <NewDay
+          key={`${selected!.shop_id}:${resource.data.date}`}
+          initial={resource.data}
+          refresh={resource.refresh}
+        />
       )}
       {day && (
         <>
@@ -218,6 +225,9 @@ function TransactionForm({
         value={type}
         onChange={setType}
       />
+      <InfoHelp key={type} title={transactionTypes.find((item) => item.type === type)!.label}>
+        {transactionHelp[type]}
+      </InfoHelp>
       {(type === 'EXPENSE' || type === 'SUPPLIER_PAYMENT') && (
         <FilterChips
           label="Paid from"
@@ -229,15 +239,7 @@ function TransactionForm({
           ]}
         />
       )}
-      <Text style={styles.small}>
-        {type === 'EXPENSE'
-          ? 'Describe what you paid for and add a category, such as transport or shop supplies.'
-          : type === 'OTHER_CASH_IN'
-            ? 'Owner top-ups or old customer dues collected in cash. Do not record these again as today’s sales.'
-            : type === 'BANK_DEPOSIT' || type === 'WITHDRAWAL'
-              ? 'Only record money already removed. Do not repeat this amount in the closing form.'
-              : 'Enter sales after returns, including any tax charged. Record one daily total or individual entries, never both.'}
-      </Text>
+      {(type === 'EXPENSE' || type === 'SUPPLIER_PAYMENT') && <FinancialHelp topic="Paid from" />}
       <Card>
         <MoneyField label="Amount (₹)" value={amount} onChange={setAmount} />
         <Field
@@ -249,6 +251,7 @@ function TransactionForm({
         />
         <Field
           label="Category (optional)"
+          help={financialHelp['Category (optional)']}
           value={category}
           onChangeText={setCategory}
           placeholder="e.g. Shop expenses"

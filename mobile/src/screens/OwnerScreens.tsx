@@ -1,3 +1,5 @@
+import { RegisterCalendar } from '../components/RegisterCalendar';
+import { dateInZone } from '../financial/calendar';
 import React, { useState } from 'react';
 import { Pressable, Switch, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -14,6 +16,7 @@ import {
   Field,
   Heading,
   Loading,
+  MonthPicker,
   Page,
   styles,
   timeLabel,
@@ -578,7 +581,7 @@ function AttendanceRow({
       );
       await refresh();
     });
-  const canMark = row.can_mark;
+  const canMark = row.can_mark && config.date === dateInZone(config.timezone);
   const showOut =
     attendance.attendance_mode === 'CHECK_IN_OUT' || attendance.check_out || attendance.is_open;
   return (
@@ -595,7 +598,7 @@ function AttendanceRow({
         In {timeLabel(attendance.check_in, config.timezone)}
         {showOut ? ` · Out ${timeLabel(attendance.check_out, config.timezone)}` : ''}
       </Text>
-      {active && active.date !== config.date && (
+      {canMark && active && active.date !== config.date && (
         <Text style={styles.small}>
           Open shift from {active.date}. Record departure before starting a new day.
         </Text>
@@ -618,7 +621,7 @@ function AttendanceRow({
       <Button
         secondary
         title={`${row.can_edit ? 'Update / history' : 'History'} · ${worker.name}`}
-        onPress={() => navigation.navigate('WorkerHistory', { worker })}
+        onPress={() => navigation.navigate('WorkerHistory', { worker, date: config.date })}
       />
     </Card>
   );
@@ -638,9 +641,17 @@ const registerFilters: {
 ];
 export function TodayAttendance() {
   const { selected } = useAuth();
+  const today = dateInZone(selected!.shop.timezone);
+  const [chosenDate, setChosenDate] = useState<string | null>(null);
+  const date = chosenDate || today;
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [month, setMonth] = useState(today.slice(0, 7));
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'ALL' | Status>('ALL');
-  const resource = useResource<OwnerToday>(`/shops/${selected!.shop_id}/attendance/today`, true);
+  const resource = useResource<OwnerToday>(
+    `/shops/${selected!.shop_id}/attendance/${chosenDate ? `register?day=${chosenDate}` : 'today'}`,
+    true,
+  );
   const rows = resource.data?.rows || [];
   const visible = rows
     .filter(
@@ -651,9 +662,39 @@ export function TodayAttendance() {
   return (
     <Page refresh={resource.refresh}>
       <Heading
-        title="Today’s attendance"
-        subtitle={`${resource.data?.date || 'Today'} · ${selected!.shop.name}`}
+        title={date === today ? 'Today’s attendance' : 'Team attendance'}
+        subtitle={`${date} · ${selected!.shop.name}`}
       />
+      <Button
+        secondary
+        title={calendarOpen ? 'Hide attendance calendar' : 'Choose attendance date'}
+        onPress={() => setCalendarOpen(!calendarOpen)}
+      />
+      {calendarOpen && (
+        <>
+          <MonthPicker month={month} setMonth={setMonth} timezone={selected!.shop.timezone} />
+          <RegisterCalendar
+            month={month}
+            today={today}
+            selected={date}
+            onSelect={(value) => {
+              setChosenDate(value === today ? null : value);
+              setStatus('ALL');
+            }}
+          />
+        </>
+      )}
+      {chosenDate && (
+        <Button
+          secondary
+          title="Back to today"
+          onPress={() => {
+            setChosenDate(null);
+            setMonth(today.slice(0, 7));
+            setStatus('ALL');
+          }}
+        />
+      )}
       <Text style={styles.small}>
         Tap a count to see who’s present, absent or still to be marked.
       </Text>
@@ -695,7 +736,8 @@ export function TodayAttendance() {
       <SearchField label="Search register" value={query} onChange={setQuery} />
       <Text style={styles.small}>
         Not marked means no entry yet, not absent. Counts show the whole register, including
-        inactive staff with an entry today.
+        inactive staff with an entry on the selected date. People who had not joined yet are
+        excluded.
       </Text>
       <ErrorText message={resource.error} />
       {resource.loading && <Loading />}
@@ -705,7 +747,11 @@ export function TodayAttendance() {
             {status === 'ALL' ? 'Everyone' : statusLabel(status)} · {visible.length}
           </Text>
           <Text style={styles.small}>
-            {query.trim() ? 'Matching your search' : 'Today’s register'}
+            {query.trim()
+              ? 'Matching your search'
+              : date === today
+                ? 'Today’s register'
+                : `Register · ${date}`}
           </Text>
         </View>
       )}
@@ -716,7 +762,7 @@ export function TodayAttendance() {
             description={
               rows.length
                 ? 'Try a different status, name or mobile number.'
-                : 'Add a worker or manager to start recording attendance.'
+                : 'No eligible team members or recorded attendance for this date.'
             }
           />
           {(query || status !== 'ALL') && (

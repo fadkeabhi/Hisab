@@ -1,3 +1,4 @@
+import { InfoHelp } from './InfoHelp';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -173,10 +174,14 @@ export function Button({
     </Pressable>
   );
 }
-export function Field({ label, ...props }: TextInputProps & { label: string }) {
+export function Field({
+  label,
+  help,
+  ...props
+}: TextInputProps & { label: string; help?: string }) {
   return (
     <View>
-      <Text style={styles.label}>{label}</Text>
+      {help ? <InfoHelp title={label}>{help}</InfoHelp> : <Text style={styles.label}>{label}</Text>}
       <TextInput
         accessibilityLabel={label}
         placeholderTextColor="#8D9A94"

@@ -3,6 +3,7 @@ import { Platform, ScrollView, Text, View } from 'react-native';
 import { FilterChips } from '../components/ListControls';
 import { Card, colors, Field, styles } from '../components/ui';
 import { editMoneyInput, formatMoneyInput, money } from './money';
+import { FinancialHelp, financialHelp } from './help';
 import { Totals, TransactionType, transactionTypes } from './types';
 
 export function MoneyField({
@@ -17,38 +18,41 @@ export function MoneyField({
   const caret = useRef({ start: 0, end: 0 });
   const [selection, setSelection] = useState<{ start: number; end: number }>();
   return (
-    <Field
-      label={label}
-      value={formatMoneyInput(value)}
-      selection={selection}
-      onSelectionChange={(event) => {
-        caret.current = event.nativeEvent.selection;
-      }}
-      onChange={(event) => {
-        // Web exposes the caret after paste/replacement directly on the input event.
-        const nativeCaret =
-          Platform.OS === 'web'
-            ? (event.target as unknown as { selectionStart: number }).selectionStart
-            : undefined;
-        const next = editMoneyInput(
-          value,
-          event.nativeEvent.text,
-          caret.current.start,
-          caret.current.end,
-          nativeCaret,
-        );
-        if (next) {
-          onChange(next.value);
-          setSelection({ start: next.position, end: next.position });
-        } else {
-          setSelection({ ...caret.current });
-        }
-      }}
-      keyboardType="decimal-pad"
-      autoCorrect={false}
-      placeholder="0.00"
-      style={[styles.input, { fontSize: 24, fontWeight: '600', fontVariant: ['tabular-nums'] }]}
-    />
+    <View>
+      <Field
+        label={label}
+        help={financialHelp[label]}
+        value={formatMoneyInput(value)}
+        selection={selection}
+        onSelectionChange={(event) => {
+          caret.current = event.nativeEvent.selection;
+        }}
+        onChange={(event) => {
+          // Web exposes the caret after paste/replacement directly on the input event.
+          const nativeCaret =
+            Platform.OS === 'web'
+              ? (event.target as unknown as { selectionStart: number }).selectionStart
+              : undefined;
+          const next = editMoneyInput(
+            value,
+            event.nativeEvent.text,
+            caret.current.start,
+            caret.current.end,
+            nativeCaret,
+          );
+          if (next) {
+            onChange(next.value);
+            setSelection({ start: next.position, end: next.position });
+          } else {
+            setSelection({ ...caret.current });
+          }
+        }}
+        keyboardType="decimal-pad"
+        autoCorrect={false}
+        placeholder="0.00"
+        style={[styles.input, { fontSize: 24, fontWeight: '600', fontVariant: ['tabular-nums'] }]}
+      />
+    </View>
   );
 }
 export function Breakdown({ day }: { day: Totals }) {
@@ -127,46 +131,53 @@ export function Galla({
   current?: boolean;
 }) {
   return (
-    <View style={{ backgroundColor: colors.green, borderRadius: 24, padding: 22, gap: 12 }}>
-      <Text style={{ color: '#D5E5D9', fontSize: 13 }}>
-        {current
-          ? 'CURRENT GALLA'
-          : expected === null
-            ? actual != null
-              ? 'CASH KEPT IN GALLA'
-              : 'CLOSING CHECK'
-            : 'EXPECTED GALLA'}
-      </Text>
-      <Text style={{ color: colors.white, fontSize: 34, fontWeight: '700' }}>
-        {current && expected === null
-          ? 'Available at closing'
-          : expected === null
-            ? actual != null
-              ? money(actual)
-              : 'Count at closing'
-            : money(expected)}
-      </Text>
-      {current && (
-        <Text style={{ color: '#EDF5EE', fontSize: 14 }}>
-          {expected === null
-            ? 'Sales are not recorded yet, so the current cash balance is unknown.'
-            : 'Based on recorded cash movements. Verify by counting at closing.'}
-        </Text>
-      )}
-      {!current && actual !== undefined && expected !== null && (
-        <Text style={{ color: '#EDF5EE', fontSize: 16 }}>Cash kept in galla · {money(actual)}</Text>
-      )}
+    <View>
       {!current && difference !== undefined && expected !== null && (
-        <View style={{ borderTopWidth: 1, borderTopColor: '#3E7963', paddingTop: 12, gap: 4 }}>
-          <Text style={{ color: '#D5E5D9', fontSize: 13 }}>Difference</Text>
-          <Text
-            accessibilityLabel={`Difference ${money(difference, true)}`}
-            style={{ color: '#F4CD72', fontSize: 26, fontWeight: '700' }}
-          >
-            {money(difference, true)}
-          </Text>
-        </View>
+        <FinancialHelp topic="Difference" />
       )}
+      <View style={{ backgroundColor: colors.green, borderRadius: 24, padding: 22, gap: 12 }}>
+        <Text style={{ color: '#D5E5D9', fontSize: 13 }}>
+          {current
+            ? 'CURRENT GALLA'
+            : expected === null
+              ? actual != null
+                ? 'CASH KEPT IN GALLA'
+                : 'CLOSING CHECK'
+              : 'EXPECTED GALLA'}
+        </Text>
+        <Text style={{ color: colors.white, fontSize: 34, fontWeight: '700' }}>
+          {current && expected === null
+            ? 'Available at closing'
+            : expected === null
+              ? actual != null
+                ? money(actual)
+                : 'Count at closing'
+              : money(expected)}
+        </Text>
+        {current && (
+          <Text style={{ color: '#EDF5EE', fontSize: 14 }}>
+            {expected === null
+              ? 'Sales are not recorded yet, so the current cash balance is unknown.'
+              : 'Based on recorded cash movements. Verify by counting at closing.'}
+          </Text>
+        )}
+        {!current && actual !== undefined && expected !== null && (
+          <Text style={{ color: '#EDF5EE', fontSize: 16 }}>
+            Cash kept in galla · {money(actual)}
+          </Text>
+        )}
+        {!current && difference !== undefined && expected !== null && (
+          <View style={{ borderTopWidth: 1, borderTopColor: '#3E7963', paddingTop: 12, gap: 4 }}>
+            <Text style={{ color: '#D5E5D9', fontSize: 13 }}>Difference</Text>
+            <Text
+              accessibilityLabel={`Difference ${money(difference, true)}`}
+              style={{ color: '#F4CD72', fontSize: 26, fontWeight: '700' }}
+            >
+              {money(difference, true)}
+            </Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }

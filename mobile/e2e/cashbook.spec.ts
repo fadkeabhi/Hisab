@@ -195,3 +195,37 @@ test('total-only billing saves unknown payment split and can later reconcile kno
     page.getByText(/Payment breakdown not provided/).filter({ visible: true }),
   ).toBeVisible();
 });
+
+test('opening cash follows refreshed carry-forward without overwriting an owner edit', async ({
+  page,
+}) => {
+  let suggested = '5999.00';
+  let reads = 0;
+  await page.route('**/api/shops/*/hishob/today', async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({
+      response,
+      json: { ...data, suggested_opening_cash: suggested, previous_closed_date: '2026-09-26' },
+    });
+    reads++;
+  });
+  await owner(page);
+  const opening = page.getByRole('textbox', { name: 'Opening cash', exact: true });
+  const reason = page.getByRole('textbox', { name: 'Opening change reason', exact: true });
+  await expect(opening).toHaveValue('5,999.00');
+  suggested = '1499.00';
+  await expect(opening).toHaveValue('1,499.00');
+  await expect(reason).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Start today’s Hishob', exact: true }),
+  ).toBeEnabled();
+
+  await opening.fill('1200');
+  await reason.fill('Counted opening cash');
+  const previousReads = reads;
+  suggested = '1400.00';
+  await expect.poll(() => reads).toBeGreaterThan(previousReads);
+  await expect(opening).toHaveValue('1,200');
+  await expect(reason).toHaveValue('Counted opening cash');
+});
