@@ -36,6 +36,20 @@ async function expense(
   await expect(page.getByRole('button', { name: 'Add transaction', exact: true })).toBeVisible();
 }
 
+async function unpaid(page: Page, amount: string) {
+  await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Transaction type: Credit sales (unpaid)', exact: true })
+    .click();
+  await page
+    .getByRole('textbox', { name: 'Customer name / bill reference', exact: true })
+    .fill('Ravi');
+  await page.getByRole('textbox', { name: 'Amount (₹)', exact: true }).fill(amount);
+  await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Unpaid bill');
+  await page.getByRole('button', { name: 'Save transaction', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Add transaction', exact: true })).toBeVisible();
+}
+
 test('cash-count shop estimates sales, excludes digital expenses and carries retained cash', async ({
   page,
 }, info) => {
@@ -43,9 +57,10 @@ test('cash-count shop estimates sales, excludes digital expenses and carries ret
   await method(page, 'Count cash');
   await expense(page, 'Cash from galla', '500');
   await expense(page, 'UPI / bank / card', '300');
+  await unpaid(page, '300');
   await page.getByRole('button', { name: 'Close day', exact: true }).click();
   await page.getByRole('textbox', { name: 'UPI / card sales', exact: true }).fill('2000');
-  await page.getByRole('textbox', { name: 'Credit sales still unpaid', exact: true }).fill('300');
+  await expect(page.getByText('Today’s unpaid sales · ₹300', { exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: 'Actual cash in galla', exact: true }).fill('5500');
   await expect(page.getByText('Estimated cash sales · ₹5,000', { exact: true })).toBeVisible();
   await page
@@ -80,7 +95,7 @@ test('billing shop reconciles cash only and safely corrects a preserved closing'
   await expense(page, 'Cash from galla', '500');
   await expense(page, 'UPI / bank / card', '300');
   await page.getByRole('button', { name: 'Close day', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Cash sales from billing', exact: true }).fill('5000');
+  await page.getByRole('textbox', { name: 'Total sales from billing', exact: true }).fill('7000');
   await page.getByRole('textbox', { name: 'UPI / card sales', exact: true }).fill('2000');
   await page.getByRole('textbox', { name: 'Actual cash in galla', exact: true }).fill('5400');
   await expect(page.getByLabel('Difference -₹100', { exact: true })).toBeVisible();
@@ -103,8 +118,8 @@ test('billing shop reconciles cash only and safely corrects a preserved closing'
   await page.getByRole('button', { name: 'Confirm reopening', exact: true }).click();
   await page.getByRole('button', { name: 'Close day', exact: true }).click();
   await expect(
-    page.getByRole('textbox', { name: 'Cash sales from billing', exact: true }),
-  ).toHaveValue('5,000.00');
+    page.getByRole('textbox', { name: 'Total sales from billing', exact: true }),
+  ).toHaveValue('7,000.00');
   await expect(page.getByRole('textbox', { name: 'UPI / card sales', exact: true })).toHaveValue(
     '2,000.00',
   );
@@ -126,7 +141,7 @@ test('total-only billing saves unknown payment split and can later reconcile kno
   await expect(page.getByText('Available at closing', { exact: true })).toBeVisible();
   await expense(page, 'Cash from galla', '500');
   await page.getByRole('button', { name: 'Close day', exact: true }).click();
-  await page.getByRole('button', { name: 'Billing report: Total sales only', exact: true }).click();
+  await page.getByRole('button', { name: 'Non-cash sales: Not known', exact: true }).click();
   await page.getByRole('textbox', { name: 'Total sales from billing', exact: true }).fill('7000');
   await expect(
     page.getByRole('textbox', { name: 'Cash sales from billing', exact: true }),
@@ -177,7 +192,9 @@ test('total-only billing saves unknown payment split and can later reconcile kno
     .getByRole('button', { name: 'Non-cash sales: I know the totals', exact: true })
     .click();
   await page.getByRole('textbox', { name: 'UPI / card sales', exact: true }).fill('8000');
-  await page.getByRole('textbox', { name: 'Credit sales still unpaid', exact: true }).fill('0');
+  await expect(
+    page.getByRole('textbox', { name: 'Credit sales still unpaid', exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Close today’s Hishob', exact: true }),
   ).toBeDisabled();
@@ -228,4 +245,58 @@ test('opening cash follows refreshed carry-forward without overwriting an owner 
   await expect.poll(() => reads).toBeGreaterThan(previousReads);
   await expect(opening).toHaveValue('1,200');
   await expect(reason).toHaveValue('Counted opening cash');
+});
+
+test('customer dues collect partial cash and digital payments and feed billing close', async ({
+  page,
+}, info) => {
+  await owner(page);
+  await method(page, 'Use billing totals');
+  await page.getByRole('button', { name: 'Customer dues', exact: true }).click();
+  await page.getByRole('button', { name: 'Add unpaid sale', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Customer name / bill reference', exact: true })
+    .fill('Ravi');
+  await page.getByRole('textbox', { name: 'Amount (₹)', exact: true }).fill('1000');
+  await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Bill 42');
+  await page.getByRole('button', { name: 'Save transaction', exact: true }).click();
+  await expect(page.getByText('Due ₹1,000', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Receive payment · Ravi', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Payment received (₹)', exact: true }).fill('1100');
+  await expect(
+    page.getByRole('button', { name: 'Confirm payment received', exact: true }),
+  ).toBeDisabled();
+  await page.getByRole('textbox', { name: 'Payment received (₹)', exact: true }).fill('300');
+  await page.getByRole('button', { name: 'Confirm payment received', exact: true }).click();
+  await expect(page.getByText('Due ₹700', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Receive payment · Ravi', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Payment received (₹)', exact: true }).fill('200');
+  await page.getByRole('button', { name: 'Received by: UPI / card / bank', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Payment note (optional)', exact: true })
+    .fill('UPI ref 123');
+  await page.getByRole('button', { name: 'Confirm payment received', exact: true }).click();
+  await expect(page.getByText('Due ₹500', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Payment history · Ravi', exact: true }).click();
+  await expect(page.getByText('UPI ref 123', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('customer-dues.png'), fullPage: true });
+  await page
+    .getByRole('button', { name: /back/i })
+    .or(page.getByRole('link', { name: /back/i }))
+    .click();
+  await page.getByRole('button', { name: 'Close day', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'UPI / card sales', exact: true })).toBeVisible();
+  await expect(page.getByText('Today’s unpaid sales · ₹500', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Billing report: Payment breakdown', exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('textbox', { name: 'Total sales from billing', exact: true }).fill('1000');
+  await page.getByRole('textbox', { name: 'UPI / card sales', exact: true }).fill('200');
+  await page.getByRole('textbox', { name: 'Actual cash in galla', exact: true }).fill('1300');
+  await expect(page.getByLabel('Difference ₹0', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('simplified-billing-close.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Close today’s Hishob', exact: true }).click();
+  await expect(
+    page.getByText('Sales ₹1,000', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
 });

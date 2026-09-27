@@ -16,17 +16,21 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
   const mode = initial.mode || 'ENTRIES';
   const [actual, setActual] = useState(initial.counted_cash || '');
   const previousClosing = initial.closing_snapshots.at(-1);
-  const [billingInput, setBillingInput] = useState<'SPLIT' | 'TOTAL'>(
-    previousClosing?.billing_input || 'SPLIT',
-  );
   const [total, setTotal] = useState(previousClosing?.total_sales || '');
   const [knowNonCash, setKnowNonCash] = useState(
-    previousClosing?.billing_input === 'TOTAL' && previousClosing.cash_sales !== null,
+    previousClosing ? previousClosing.digital_sales !== null : true,
   );
-  const totalOnly = mode === 'BILLING' && billingInput === 'TOTAL';
-  const [cash, setCash] = useState(previousClosing?.cash_sales || '');
+  const totalOnly = mode === 'BILLING';
   const [digital, setDigital] = useState(previousClosing?.digital_sales || '0');
-  const [credit, setCredit] = useState(previousClosing?.credit_sales || '0');
+  const entryCredit = initial.transactions.reduce((sum, entry) => {
+    if (entry.deleted) return sum;
+    if (entry.type === 'CREDIT_SALE') return sum + signedPaise(entry.amount);
+    if (entry.type === 'DUE_COLLECTION' && entry.due_date === initial.date)
+      return sum - signedPaise(entry.amount);
+    return sum;
+  }, BigInt(0));
+  const legacyCredit = signedPaise(initial.legacy_credit_sales || '0');
+  const credit = decimal(entryCredit + legacyCredit);
   const [bank, setBank] = useState(initial.closing_bank_deposit || '0');
   const [home, setHome] = useState(initial.closing_withdrawal || '0');
   const [differenceNote, setDifferenceNote] = useState('');
@@ -36,10 +40,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
   useUnsavedChanges(
     !!actual ||
       !!total ||
-      billingInput !== (previousClosing?.billing_input || 'SPLIT') ||
-      !!cash ||
       digital !== '0' ||
-      credit !== '0' ||
       bank !== '0' ||
       home !== '0' ||
       !!differenceNote ||
@@ -70,11 +71,9 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
     mode === 'ENTRIES'
       ? signedPaise(initial.cash_sales || '0')
       : mode === 'BILLING'
-        ? totalOnly
-          ? knowNonCash && totalValue !== null && digitalSales !== null && creditSales !== null
-            ? totalValue - digitalSales - creditSales
-            : null
-          : parseMoney(cash)
+        ? knowNonCash && totalValue !== null && digitalSales !== null && creditSales !== null
+          ? totalValue - digitalSales - creditSales
+          : null
         : counted === null
           ? null
           : counted - base;
@@ -105,61 +104,47 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
           {mode === 'COUNTED'
             ? 'First record every expense and cash movement. We will estimate net cash sales from the money you count. A shortage cannot be checked without a separate sales record.'
             : mode === 'BILLING'
-              ? 'Copy today’s sales after returns, including any tax charged. Your report can show a grand total or a payment breakdown. Do not use bank settlement amounts after fees.'
+              ? 'Enter the billing machine’s grand total, including unpaid sales and tax charged, after returns. If your report gives separate payment amounts, add them to obtain this total.'
               : 'Check that all sales, expenses and cash movements are recorded before counting.'}
         </Text>
         {mode === 'BILLING' && (
           <>
-            <FinancialHelp topic="Billing report" />
+            <MoneyField label="Total sales from billing" value={total} onChange={setTotal} />
+            <FinancialHelp topic="Non-cash sales" />
             <FilterChips
-              label="Billing report"
-              value={billingInput}
-              onChange={setBillingInput}
+              label="Non-cash sales"
+              value={knowNonCash ? 'KNOWN' : 'UNKNOWN'}
+              onChange={(value) => setKnowNonCash(value === 'KNOWN')}
               options={[
-                { value: 'SPLIT', label: 'Payment breakdown' },
-                { value: 'TOTAL', label: 'Total sales only' },
+                { value: 'KNOWN', label: 'I know the totals' },
+                { value: 'UNKNOWN', label: 'Not known' },
               ]}
             />
-            {totalOnly ? (
-              <>
-                <MoneyField label="Total sales from billing" value={total} onChange={setTotal} />
-                <Text style={styles.label}>UPI/card and unpaid credit totals</Text>
-                <FinancialHelp topic="Non-cash sales" />
-                <FilterChips
-                  label="Non-cash sales"
-                  value={knowNonCash ? 'KNOWN' : 'UNKNOWN'}
-                  onChange={(value) => {
-                    setKnowNonCash(value === 'KNOWN');
-                    if (value === 'KNOWN' && !knowNonCash) {
-                      setDigital('');
-                      setCredit('');
-                    }
-                  }}
-                  options={[
-                    { value: 'UNKNOWN', label: 'Not known' },
-                    { value: 'KNOWN', label: 'I know the totals' },
-                  ]}
-                />
-                <Text style={styles.small}>
-                  If known, use UPI/card payments for today’s sales and today’s unpaid credit. Cash
-                  sales = total sales − UPI/card − unpaid credit. Separate UPI and card amounts are
-                  not required.
-                </Text>
-              </>
-            ) : (
-              <MoneyField label="Cash sales from billing" value={cash} onChange={setCash} />
-            )}
+            <Text style={styles.small}>
+              Cash sales = billing total − UPI/card sales − today’s remaining unpaid sales.
+            </Text>
           </>
         )}
         {mode !== 'ENTRIES' && (!totalOnly || knowNonCash) && (
           <>
             <MoneyField label="UPI / card sales" value={digital} onChange={setDigital} />
-            <MoneyField label="Credit sales still unpaid" value={credit} onChange={setCredit} />
             <Text style={styles.small}>
-              Enter 0 if none. These totals do not add cash to the galla. Exclude owner top-ups and
-              collections of older dues from today’s sales.
+              Include payments collected for today’s sales. Exclude collections of older dues and
+              owner transfers. Enter 0 if none.
             </Text>
           </>
+        )}
+        <Text style={styles.heading}>Today’s unpaid sales · {money(credit)}</Text>
+        <Text style={styles.small}>
+          Calculated from unpaid-sale transactions, less payments collected for them today. Older
+          customer dues are not part of today’s sales. To add or correct an unpaid sale, return to
+          the day before closing.
+        </Text>
+        {legacyCredit > BigInt(0) && (
+          <Text style={styles.small}>
+            Includes {money(decimal(legacyCredit))} from an older closing entered as a total. This
+            amount is preserved but has no individual customer records in the dues register.
+          </Text>
         )}
         {totalOnly && knowNonCash && cashSales !== null && cashSales >= BigInt(0) && (
           <Text style={styles.heading}>Calculated cash sales · {money(decimal(cashSales))}</Text>
@@ -251,7 +236,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
           badEstimate
             ? 'The count implies negative cash sales. Review opening cash, expenses and cash movements.'
             : invalidSplit
-              ? 'Enter both non-cash totals. Together they cannot exceed total sales.'
+              ? 'UPI/card sales plus unpaid sales cannot exceed total sales.'
               : transferError
                 ? 'You cannot remove more cash than you counted.'
                 : action.error
@@ -283,11 +268,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
                 ...(mode !== 'ENTRIES' && (!totalOnly || knowNonCash)
                   ? { digital_sales: digital, credit_sales: credit }
                   : {}),
-                ...(mode === 'BILLING'
-                  ? totalOnly
-                    ? { billing_input: 'TOTAL', total_sales: total }
-                    : { billing_input: 'SPLIT', cash_sales: cash }
-                  : {}),
+                ...(mode === 'BILLING' ? { billing_input: 'TOTAL', total_sales: total } : {}),
               },
               'POST',
             );

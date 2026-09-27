@@ -10,13 +10,30 @@ Choose **Hishob → Choose Hishob method** before starting a day, or **Account �
 
 The billing mode is manual entry of report totals, not an automatic POS integration. No separate shops/apps or duplicate cashbooks are required.
 
-## Billing reports with only a grand total
+## One billing close screen
 
-At closing choose **Billing report → Total sales only** and enter the report's sales total. UPI and card amounts do not need separate fields. Leave **Non-cash sales → Not known** if you do not have payment totals: Hishob saves the sales total, counted cash, expenses and bank/home transfers. Cash/digital/credit sales and the cash difference stay **unknown**, rather than becoming zero or treating every sale as cash.
+Enter **Total sales from billing**. The old Payment breakdown / Total sales only selector has been removed. If your machine gives separate cash, digital and credit amounts, add them to get its grand total. **I know the totals** is selected by default: enter combined UPI/card receipts for today’s sales. **Today’s unpaid sales** is read-only, derived from individual credit-sale entries less their same-day collections.
 
-If you know non-cash sales from another reliable record, choose **I know the totals**. Enter combined UPI/card sales and unpaid credit sales, explicitly entering zero where none occurred. Hishob calculates `cash sales = total sales − UPI/card sales − unpaid credit sales`. For example, ₹10,000 total with ₹3,000 digital and ₹500 unpaid credit means ₹6,500 cash sales. Non-cash amounts cannot exceed total sales. Payments for older dues and owner funds are not today's sales.
+`cash sales = billing grand total − UPI/card sales − today’s remaining unpaid sales`
 
-**Payment breakdown** remains available for reports that provide cash, combined UPI/card and unpaid-credit totals. Owners can reopen a total-only closing to add known payment totals later; the previous closing remains preserved.
+Example: total ₹10,000, digital ₹3,000 and unpaid transactions ₹500 gives cash sales ₹6,500. Count the galla to compare physical cash against the expected amount. Include same-day digital credit collections in the UPI/card sales total, but exclude collections of older dues. Do not subtract unpaid sales from the grand total yourself.
+
+Choose **Not known** if digital totals are unavailable. The app saves the grand total and physical cash but leaves cash sales and the difference unknown. Recorded unpaid entries remain known. Sales without a payment breakdown represent the remaining cash/digital portion, excluding known credit.
+
+## Customer dues
+
+Open **Hishob → Customer dues**, or use **Add transaction → Credit sales (unpaid)** in any method. Record the customer/bill reference, amount and description. For a partly paid bill, record only its unpaid portion as the credit entry; include the paid portion in the normal sales totals. Never enter an old debt as a new sale today.
+
+The register shows the sale date, original amount, received amount, remaining amount and receipt history. Search by customer or description; filter unpaid/part-paid, paid or all. Owners and managers with live Hishob access can view it; collecting payments requires the existing add-transactions permission. A receipt must be entered in today’s open day.
+
+- Receive a partial or full payment by Cash or UPI/card/bank. A zero remaining balance automatically marks the entry Paid.
+- A same-day receipt reduces that day’s credit sales. Entry mode shifts the payment to cash/digital sales. Billing/count modes include it in the sales totals supplied/estimated at closing; it is not added twice.
+- A later cash receipt adds to Other cash in on the receiving day. A later digital receipt is recorded without changing the galla. Neither increases the receiving day’s sales or rewrites the original closing.
+- Cash receipts appear automatically in the cashbook; do not add a second cash-in entry. Split mixed cash/digital payments into separate receipts.
+- Receipts are immutable. An uncollected credit entry can be deleted with a reason while its original day is open; its amount cannot be edited in place. Delete/re-add an incorrect unpaid amount before collecting. Once payments exist, the sale cannot be deleted. Customer/description corrections retain the original amount.
+- Old manual credit totals in preserved closings have no customer records and cannot be automatically allocated or collected in this register. The close screen identifies a preserved legacy total. No customer balances are invented from those totals.
+
+Payment and cash movement commit together in the receiving day document. Optimistic day revisions and a unique receipt-sequence index prevent duplicate/concurrent over-collection. No replica-set migration or new environment variables are needed.
 
 While a day is open the balance is labelled **Current Galla**, based on recorded cash movements. Billing and cash-count days do not know sales until closing, so they show an unavailable balance with an explanation. **Expected Galla** is used for closing reconciliation.
 
@@ -77,15 +94,16 @@ Only the current version of each closed day counts. Reopening immediately remove
 
 - Settings: `hishob_mode = ENTRIES | COUNTED | BILLING` on the existing shop-settings API. Only the owner can change it.
 - New days copy that setting. Historical records without a mode are read as `ENTRIES`; no bulk rewrite is required.
-- Existing transaction API adds `DIGITAL_SALE`, `CREDIT_SALE` and `payment_method = CASH | DIGITAL` for expenses/supplier payments. Cash-sale entries are rejected in Count cash/Billing modes to prevent counting sales twice.
-- Close API accepts `cash_sales` (Billing only), `digital_sales`, `credit_sales` (Count cash/Billing), `closing_bank_deposit`, and `closing_withdrawal`. `actual_closing_cash` in the request remains the physical count; the response's `actual_closing_cash` is the retained cash after closing transfers, with `counted_cash` preserving the input.
-- Billing close additionally accepts `billing_input = SPLIT | TOTAL` (defaults to `SPLIT` for existing clients). `TOTAL` requires `total_sales`, forbids `cash_sales`, and optionally accepts **both** `digital_sales` and `credit_sales`. Omitting both preserves unknown payment amounts. `SPLIT` and non-billing methods reject `total_sales`. Responses/snapshots include `billing_input` and `unallocated_sales`; monthly summaries include `unallocated_sales` and `unallocated_days`.
+- Existing transaction API adds `DIGITAL_SALE`, `CREDIT_SALE` and `payment_method = CASH | DIGITAL` for expenses/supplier payments. Cash/digital-sale entries are rejected in Count cash/Billing modes to prevent counting sales twice; individual CREDIT_SALE entries are allowed in every mode.
+- New days set `credit_tracking=true`; close derives unpaid sales from entries. A supplied credit total must match. `billing_input=SPLIT` remains accepted for old clients, but the UI always sends `TOTAL` with the billing grand total. Digital totals may be omitted when unknown. Known manual credit totals from legacy closings are preserved once as an explicit legacy balance, alongside new transaction-based dues. New manual credit totals are rejected; historical snapshots are preserved.
+- `GET /api/shops/{shop_id}/hishob/dues?status=OPEN|PAID|ALL&q=...&page=1` returns a paginated register and totals for the active filters.
+- `POST /api/shops/{shop_id}/hishob/days/{day_id}/due-payments` takes day revision, source day/entry IDs, amount, CASH or DIGITAL payment method, optional note and an idempotent request ID. It creates an audited DUE_COLLECTION receipt and updates the cashbook atomically.
 - `GET /api/shops/{shop_id}/hishob/monthly-summary?month=YYYY-MM` returns decimal-string totals and coverage counts. Owners and managers with live Hishob access can read it; workers and other shops cannot.
 - Transaction search cash-in/out totals exclude digital and credit movements. Search covers transaction entries; totals and transfers entered on closing are shown in day details and monthly reports.
 - Integer-paise arithmetic, optimistic revisions, transaction idempotency, soft deletion, audit snapshots and owner-only reopening remain in place. Closing transfers replace the previous closing allocation on a correction; they are not appended again.
 - Reopening preserves the last count/allocations for review and pre-fills sales from the preserved closing. New totals must be confirmed on close. Already-carried openings on later days are unchanged; correcting those still requires an explicit reason.
 
-No new environment variables or database collections are needed. The existing unique shop/date index supports day and month queries.
+No new environment variables or database collections are needed. Startup adds receipt-sequence uniqueness and due lookup indexes; the existing unique shop/date index supports day and month queries.
 
 ## Files and validation
 

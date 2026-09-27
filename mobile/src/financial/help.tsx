@@ -5,14 +5,16 @@ import { InfoHelp } from '../components/InfoHelp';
 import { TransactionType } from './types';
 
 export const transactionHelp: Record<TransactionType, string> = {
+  DUE_COLLECTION:
+    'A payment against an unpaid sale, recorded through Customer dues. Cash enters the galla; UPI/card does not. Older dues never increase today’s sales. Receipts are preserved and cannot be edited or deleted.',
   CASH_SALE:
     'Use when a customer pays cash for today’s sale. Example: a ₹500 cash bill adds ₹500 to sales and to the galla. Enter individual bills OR one daily total, never both. In billing mode, enter sales at closing instead.',
   DIGITAL_SALE:
     'Use for today’s sales paid by UPI or card. Example: a ₹500 UPI bill adds ₹500 to sales but no cash to the galla. Do not enter the machine’s grand total here. Exclude old dues, owner transfers and bank settlements.',
   CREDIT_SALE:
-    'Use for a sale made today that the customer has not paid for yet. Example: ₹500 sold on credit adds to sales, but not to cash or UPI. When old dues are later collected in cash, use Other cash in.',
+    'Use for a sale made today that the customer has not paid for yet. Example: ₹500 sold on credit adds to sales, but not to cash or UPI. Record collections in Customer dues, by cash or UPI/card. Partial payments are allowed; the entry closes when fully paid.',
   OTHER_CASH_IN:
-    'Cash received that is not today’s sales: owner top-ups, loans or old customer dues. Example: the owner adds ₹1,000 change; the galla increases by ₹1,000, but sales do not. Do not enter UPI receipts here.',
+    'Cash received that is not today’s sales: owner top-ups, loans or old customer dues. Example: the owner adds ₹1,000 change; the galla increases by ₹1,000, but sales do not. For a sale already in Customer dues, record its payment there instead so the balance is cleared. Do not enter UPI receipts here.',
   EXPENSE:
     'Use for running costs such as tea, transport, rent or supplies. Example: ₹100 for tea paid from the drawer reduces cash by ₹100. Select the correct Paid from option. Use Supplier payment for money paid to a stock supplier. Record each payment once.',
   SUPPLIER_PAYMENT:
@@ -34,13 +36,13 @@ export const financialHelp: Record<string, string> = {
   'Paid from':
     'Choose Cash from galla only if physical money left the drawer. Choose UPI / bank / card if you paid digitally; it is recorded but does not reduce drawer cash.',
   'Billing report':
-    'Choose Payment breakdown if the billing machine gives separate cash, UPI/card and unpaid credit totals. Choose Total sales only if it gives one grand total. Example: total ₹10,000 minus UPI/card ₹4,000 and unpaid credit ₹0 gives cash sales ₹6,000.',
+    'Enter the billing grand total. If the machine gives separate amounts, add them together first. Example: total ₹10,000 minus UPI/card ₹4,000 and unpaid credit ₹0 gives cash sales ₹6,000.',
   'Non-cash sales':
-    'Choose I know the totals when you can confirm UPI/card receipts for today’s sales and unpaid credit, including zero. The app can then calculate cash sales and check the drawer. Choose Not known to save total sales without claiming a cash shortage or surplus.',
+    'Choose I know the totals when you can confirm UPI/card receipts for today’s sales, including zero. Unpaid sales are calculated from transactions. The app can then calculate cash sales and check the drawer. Choose Not known to save total sales without claiming a cash shortage or surplus.',
   'Total sales from billing':
-    'Copy the billing machine’s total sales for this day, after returns and including tax charged. This total includes cash, UPI/card and any unpaid credit. Do not enter it again as a transaction. Example: enter ₹10,000 for a ₹10,000 grand total.',
+    'Copy the billing machine’s total sales for this day, after returns and including tax charged. This total includes cash, UPI/card and unpaid sales already recorded as credit transactions. Do not enter it again as a transaction. Example: enter ₹10,000 for a ₹10,000 grand total.',
   'Cash sales from billing':
-    'Enter only today’s sales paid in cash, from the billing report. Exclude opening cash, owner top-ups and old dues. If you only know the grand total, switch Billing report to Total sales only.',
+    'Enter only today’s sales paid in cash, from the billing report. Exclude opening cash, owner top-ups and old dues. If you only know the grand total, enter it as Total sales from billing.',
   'UPI / card sales':
     'Add UPI and card payments for today’s sales. Example: PhonePe ₹4,000 plus card ₹1,000 means ₹5,000 here. Exclude old dues and owner transfers. Use customer payment totals, not bank settlements after fees.',
   'Credit sales still unpaid':

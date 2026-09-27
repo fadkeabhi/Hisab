@@ -9,7 +9,7 @@ from pymongo.errors import PyMongoError
 
 from .config import Settings, get_settings
 from .db import create_indexes
-from .routers import account, attendance, auth, hishob, password_auth, shops
+from .routers import account, attendance, auth, dues, hishob, password_auth, shops
 from .web_session import COOKIE_NAME
 
 
@@ -82,5 +82,6 @@ def create_app(settings: Settings = None):
     app.include_router(account.router, prefix="/api")
     app.include_router(shops.router, prefix="/api")
     app.include_router(hishob.router, prefix="/api")
+    app.include_router(dues.router, prefix="/api")
     app.include_router(attendance.router, prefix="/api")
     return app

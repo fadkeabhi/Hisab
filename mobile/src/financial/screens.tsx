@@ -110,6 +110,7 @@ export function HishobToday({ navigation }: NativeStackScreenProps<Routes, 'Hish
           />
         </View>
       </View>
+      <Button title="Customer dues" secondary onPress={() => navigation.navigate('CustomerDues')} />
       <ErrorText message={resource.error} />
       {resource.loading && <Loading />}
       {!day && selected!.permissions.manage_settings && (
@@ -179,21 +180,26 @@ export function HishobToday({ navigation }: NativeStackScreenProps<Routes, 'Hish
 function TransactionForm({
   initial: loaded,
   entryId,
+  initialType,
   done,
 }: {
   initial: Day;
   entryId?: string;
+  initialType?: 'CREDIT_SALE';
   done: () => void;
 }) {
   const [initial] = useState(loaded);
   const { api, selected } = useAuth();
   const entry = initial.transactions.find((item) => item.id === entryId);
   const [type, setType] = useState<TransactionType>(
-    entry?.type || (initial.mode && initial.mode !== 'ENTRIES' ? 'EXPENSE' : 'CASH_SALE'),
+    entry?.type ||
+      initialType ||
+      (initial.mode && initial.mode !== 'ENTRIES' ? 'EXPENSE' : 'CASH_SALE'),
   );
   const [payment, setPayment] = useState<'CASH' | 'DIGITAL'>(entry?.payment_method || 'CASH');
   const [amount, setAmount] = useState(entry?.amount || '');
   const [description, setDescription] = useState(entry?.description || '');
+  const [customer, setCustomer] = useState(entry?.customer_name || '');
   const [category, setCategory] = useState(entry?.category || '');
   const [reason, setReason] = useState('');
   const [requestId] = useState(
@@ -201,7 +207,8 @@ function TransactionForm({
   );
   const action = useAction();
   useUnsavedChanges(
-    amount !== (entry?.amount || '') ||
+    customer !== (entry?.customer_name || '') ||
+      amount !== (entry?.amount || '') ||
       description !== (entry?.description || '') ||
       category !== (entry?.category || '') ||
       type !== (entry?.type || 'CASH_SALE') ||
@@ -217,9 +224,10 @@ function TransactionForm({
         options={transactionTypes
           .filter(
             (item) =>
-              !initial.mode ||
-              initial.mode === 'ENTRIES' ||
-              !['CASH_SALE', 'DIGITAL_SALE', 'CREDIT_SALE'].includes(item.type),
+              item.type !== 'DUE_COLLECTION' &&
+              (!initial.mode ||
+                initial.mode === 'ENTRIES' ||
+                !['CASH_SALE', 'DIGITAL_SALE'].includes(item.type)),
           )
           .map((item) => ({ value: item.type, label: item.label }))}
         value={type}
@@ -241,6 +249,15 @@ function TransactionForm({
       )}
       {(type === 'EXPENSE' || type === 'SUPPLIER_PAYMENT') && <FinancialHelp topic="Paid from" />}
       <Card>
+        {type === 'CREDIT_SALE' && (
+          <Field
+            label="Customer name / bill reference"
+            value={customer}
+            onChangeText={setCustomer}
+            maxLength={100}
+            placeholder="e.g. Ravi · Bill 42"
+          />
+        )}
         <MoneyField label="Amount (₹)" value={amount} onChange={setAmount} />
         <Field
           label="Description"
@@ -274,6 +291,7 @@ function TransactionForm({
           parseMoney(amount) === null ||
           parseMoney(amount) === BigInt(0) ||
           !description.trim() ||
+          (type === 'CREDIT_SALE' && !customer.trim()) ||
           (!!entryId && reason.trim().length < 2)
         }
         onPress={() =>
@@ -287,6 +305,7 @@ function TransactionForm({
                 payment_method:
                   type === 'EXPENSE' || type === 'SUPPLIER_PAYMENT' ? payment : 'CASH',
                 description,
+                customer_name: customer,
                 category,
                 ...(entryId ? { reason } : { request_id: requestId }),
               },
@@ -323,6 +342,7 @@ export function HishobTransaction({
         <TransactionForm
           initial={resource.data}
           entryId={route.params.entryId}
+          initialType={route.params.initialType}
           done={() => navigation.goBack()}
         />
       )}
@@ -349,7 +369,9 @@ export function EntryCard({
       </View>
       <Text style={styles.small}>
         {transactionTypes.find((type) => type.type === entry.type)?.label}
-        {entry.type === 'EXPENSE' || entry.type === 'SUPPLIER_PAYMENT'
+        {entry.type === 'EXPENSE' ||
+        entry.type === 'SUPPLIER_PAYMENT' ||
+        entry.type === 'DUE_COLLECTION'
           ? ` · ${entry.payment_method === 'DIGITAL' ? 'Digital' : 'Cash'}`
           : ''}
         {entry.category ? ` · ${entry.category}` : ''}
@@ -476,7 +498,7 @@ export function HishobTransactions({
             entry={entry}
             zone={selected!.shop.timezone}
             edit={
-              editable && !entry.deleted
+              editable && !entry.deleted && entry.type !== 'DUE_COLLECTION'
                 ? () =>
                     navigation.navigate('HishobTransaction', {
                       dayId: route.params.dayId,
@@ -485,7 +507,7 @@ export function HishobTransactions({
                 : undefined
             }
           />
-          {editable && !entry.deleted && (
+          {editable && !entry.deleted && entry.type !== 'DUE_COLLECTION' && (
             <Button
               title={`Delete · ${entry.description}`}
               secondary

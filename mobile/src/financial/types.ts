@@ -2,6 +2,7 @@ import { Permissions } from '../types';
 export type TransactionType =
   | 'DIGITAL_SALE'
   | 'CREDIT_SALE'
+  | 'DUE_COLLECTION'
   | 'CASH_SALE'
   | 'OTHER_CASH_IN'
   | 'EXPENSE'
@@ -16,6 +17,9 @@ export const modeLabels: Record<HishobMode, string> = {
   BILLING: 'Use billing totals',
 };
 export type Entry = {
+  customer_name?: string;
+  due_date?: string;
+  note?: string;
   payment_method?: 'CASH' | 'DIGITAL';
   id: string;
   type: TransactionType;
@@ -64,6 +68,8 @@ export type Audit = {
   reason: string;
 };
 export type Day = Totals & {
+  credit_tracking?: boolean;
+  legacy_credit_sales?: string;
   id: string;
   shop_id: string;
   date: string;
@@ -102,6 +108,7 @@ export const transactionTypes: {
   field: keyof Totals;
   incoming: boolean;
 }[] = [
+  { type: 'DUE_COLLECTION', label: 'Customer payment', field: 'other_cash_in', incoming: true },
   { type: 'CASH_SALE', label: 'Cash sales', field: 'cash_sales', incoming: true },
   { type: 'DIGITAL_SALE', label: 'UPI / card sales', field: 'digital_sales', incoming: true },
   { type: 'CREDIT_SALE', label: 'Credit sales (unpaid)', field: 'credit_sales', incoming: true },

@@ -14,6 +14,7 @@ class TransactionType(str, Enum):
     CASH_SALE = "CASH_SALE"
     DIGITAL_SALE = "DIGITAL_SALE"
     CREDIT_SALE = "CREDIT_SALE"
+    DUE_COLLECTION = "DUE_COLLECTION"
     OTHER_CASH_IN = "OTHER_CASH_IN"
     EXPENSE = "EXPENSE"
     SUPPLIER_PAYMENT = "SUPPLIER_PAYMENT"
@@ -37,6 +38,7 @@ class OpeningUpdate(Versioned):
 
 
 class TransactionInput(Versioned):
+    customer_name: str = Field(default="", max_length=100)
     payment_method: Literal["CASH", "DIGITAL"] = "CASH"
     type: TransactionType
     amount: str = Field(pattern=MONEY_PATTERN)
@@ -67,3 +69,12 @@ class CloseInput(Versioned):
     actual_closing_cash: str = Field(pattern=MONEY_PATTERN)
     notes: str = Field(default="", max_length=1000)
     difference_note: str = Field(default="", max_length=500)
+
+
+class DuePayment(Versioned):
+    source_day_id: str = Field(min_length=1, max_length=100)
+    entry_id: str = Field(min_length=1, max_length=100)
+    amount: str = Field(pattern=MONEY_PATTERN)
+    payment_method: Literal["CASH", "DIGITAL"]
+    note: str = Field(default="", max_length=300)
+    request_id: str = Field(min_length=8, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")

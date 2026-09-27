@@ -12,8 +12,9 @@ from bson import BSON
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pymongo.errors import DuplicateKeyError
 
-from ..cashbook import MONEY_KEYS, SALE_TYPES, calculate, hydrate, paise
+from ..cashbook import MONEY_KEYS, calculate, hydrate, paise
 from ..db import get_db, new_id, now
+from ..dues import protect_credit_change
 from ..financial_schemas import (
     CloseInput,
     DayCreate,
@@ -101,9 +102,14 @@ def save(db, day, revision):
         raise HTTPException(
             409, "This day has reached its storage limit. Contact support before adding more entries."
         )
-    result = db.hishob_days.replace_one(
-        {"_id": day["_id"], "shop_id": day["shop_id"], "revision": revision}, day
-    )
+    try:
+        result = db.hishob_days.replace_one(
+            {"_id": day["_id"], "shop_id": day["shop_id"], "revision": revision}, day
+        )
+    except DuplicateKeyError:
+        raise HTTPException(
+            409, "A payment or cancellation was recorded at the same time. Refresh before trying again."
+        )
     if not result.modified_count:
         raise HTTPException(409, "This day changed on another device. Refresh and try again.")
     return serialize(day)
@@ -150,6 +156,7 @@ def create_day(shop_id: str, body: DayCreate, identity=Depends(current_identity)
         "date": str(target),
         "timezone": shop["timezone"],
         "mode": settings_for(shop)["hishob_mode"],
+        "credit_tracking": True,
         "opening_cash": opening,
         "opening_source": {
             "day_id": previous["_id"],
@@ -292,7 +299,17 @@ def search_transactions(
             {f"transactions.{field}": {"$regex": re.escape(q.strip()), "$options": "i"}}
             for field in ["description", "category", "created_by.name"]
         ]
-    incoming = {"$in": ["$transactions.type", ["CASH_SALE", "OTHER_CASH_IN"]]}
+    incoming = {
+        "$or": [
+            {"$in": ["$transactions.type", ["CASH_SALE", "OTHER_CASH_IN"]]},
+            {
+                "$and": [
+                    {"$eq": ["$transactions.type", "DUE_COLLECTION"]},
+                    {"$eq": ["$transactions.payment_method", "CASH"]},
+                ]
+            },
+        ]
+    }
     outgoing = {
         "$and": [
             {"$in": ["$transactions.type", ["EXPENSE", "SUPPLIER_PAYMENT", "BANK_DEPOSIT", "WITHDRAWAL"]]},
@@ -393,7 +410,9 @@ def update_opening(
 
 
 def transaction_values(body, day):
-    if day["mode"] != "ENTRIES" and body.type.value in SALE_TYPES:
+    if body.type.value == "DUE_COLLECTION":
+        raise HTTPException(422, "Record payments through Customer dues.")
+    if day["mode"] != "ENTRIES" and body.type.value in {"CASH_SALE", "DIGITAL_SALE"}:
         raise HTTPException(422, "Enter sales in the closing form for this shop’s Hishob method.")
     if body.payment_method != "CASH" and body.type.value not in {"EXPENSE", "SUPPLIER_PAYMENT"}:
         raise HTTPException(422, "Choose cash/digital payment only for expenses or supplier payments.")
@@ -401,6 +420,7 @@ def transaction_values(body, day):
     if amount <= 0:
         raise HTTPException(422, "Enter an amount greater than zero.")
     return {
+        "customer_name": body.customer_name,
         "type": body.type.value,
         "payment_method": body.payment_method,
         "amount": amount,
@@ -418,9 +438,9 @@ def add_transaction(
     values = transaction_values(body, day)
     existing = next((t for t in day["transactions"] if t["id"] == body.request_id), None)
     if existing:
-        if {"payment_method": "CASH", **existing["original"]} != values or existing["created_by"][
-            "user_id"
-        ] != identity.user["_id"]:
+        if {"payment_method": "CASH", "customer_name": "", **existing["original"]} != values or existing[
+            "created_by"
+        ]["user_id"] != identity.user["_id"]:
             raise HTTPException(409, "This transaction reference was already used.")
         return serialize(day)
     check_open(day, body.revision)
@@ -459,7 +479,9 @@ def edit_transaction(
     if not entry:
         raise HTTPException(404, "Active transaction not found.")
     before = deepcopy(entry)
-    entry.update(transaction_values(body, day), updated_at=now(), updated_by=actor(identity, member))
+    values = transaction_values(body, day)
+    protect_credit_change(db, day, entry, values)
+    entry.update(values, updated_at=now(), updated_by=actor(identity, member))
     calculate(day)
     audit(day, "EDIT_TRANSACTION", actor(identity, member), before, entry, body.reason)
     return save(db, day, body.revision)
@@ -481,6 +503,7 @@ def delete_transaction(
     if not entry:
         raise HTTPException(404, "Active transaction not found.")
     before = deepcopy(entry)
+    protect_credit_change(db, day, entry, None)
     entry.update(deleted=True, deleted_at=now(), deleted_by=actor(identity, member), updated_at=now())
     calculate(day)
     audit(day, "DELETE_TRANSACTION", actor(identity, member), before, entry, body.reason)
@@ -513,6 +536,16 @@ def close_day(
         ]
     }
     mode = day["mode"]
+    if mode != "ENTRIES":
+        credit = day["entry_credit_sales"] + day["legacy_credit_sales"]
+        day["credit_tracking"] = True
+        if body.credit_sales is not None and paise(body.credit_sales) != credit:
+            raise HTTPException(
+                422, "Unpaid sales are calculated from transactions. Refresh and review Customer dues."
+            )
+        # Unknown digital totals still prevent reconciliation, but credit is known from entries.
+        if not (mode == "BILLING" and body.billing_input == "TOTAL" and body.digital_sales is None):
+            body = body.model_copy(update={"credit_sales": format(Decimal(credit) / 100, ".2f")})
     if mode != "BILLING" and (body.billing_input != "SPLIT" or body.total_sales is not None):
         raise HTTPException(422, "Billing totals are only available for the billing method.")
     if body.billing_input == "SPLIT" and body.total_sales is not None:
@@ -528,7 +561,11 @@ def close_day(
             raise HTTPException(422, "Provide both digital and unpaid credit sales, or leave both unknown.")
         total = paise(body.total_sales)
         digital = paise(body.digital_sales) if body.digital_sales is not None else None
-        credit = paise(body.credit_sales) if body.credit_sales is not None else None
+        credit = (
+            day["entry_credit_sales"] + day["legacy_credit_sales"]
+            if day.get("credit_tracking")
+            else (paise(body.credit_sales) if body.credit_sales is not None else None)
+        )
         cash = total - digital - credit if digital is not None else None
         if cash is not None and cash < 0:
             raise HTTPException(422, "Digital and unpaid credit sales cannot exceed total sales.")
@@ -572,6 +609,27 @@ def close_day(
             "digital_sales": paise(body.digital_sales),
             "credit_sales": paise(body.credit_sales),
         }
+    if mode != "ENTRIES" and day.get("reported_sales"):
+        reported = day["reported_sales"]
+        if reported["cash_sales"] is not None and reported["cash_sales"] < day["same_day_cash_collections"]:
+            raise HTTPException(
+                422, "Cash sales cannot be less than cash collected for today’s unpaid sales."
+            )
+        if (
+            reported["digital_sales"] is not None
+            and reported["digital_sales"] < day["same_day_digital_collections"]
+        ):
+            raise HTTPException(422, "Include today’s collected UPI/card sales in the digital total.")
+        if (
+            reported.get("total_sales") is not None
+            and reported["total_sales"]
+            < day["entry_credit_sales"]
+            + day["same_day_cash_collections"]
+            + day["same_day_digital_collections"]
+        ):
+            raise HTTPException(
+                422, "Total sales cannot be less than recorded credit sales and their same-day payments."
+            )
     day.update(
         closing_bank_deposit=bank,
         closing_withdrawal=home,

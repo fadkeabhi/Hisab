@@ -110,10 +110,11 @@ export type Challenge = {
   dev_otp?: string;
 };
 export type HishobRoutes = {
+  CustomerDues: undefined;
   HishobToday: undefined;
   HishobHistory: undefined;
   HishobDetails: { dayId: string };
-  HishobTransaction: { dayId: string; entryId?: string };
+  HishobTransaction: { dayId: string; entryId?: string; initialType?: 'CREDIT_SALE' };
   HishobTransactions: { dayId: string };
   HishobClose: { dayId: string };
   HishobSearch: undefined;

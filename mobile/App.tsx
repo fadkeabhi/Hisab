@@ -36,6 +36,7 @@ import {
   HishobClose,
 } from './src/financial/screens';
 
+import { CustomerDues } from './src/financial/dues';
 import { HishobSearch } from './src/financial/search';
 
 const Stack = createNativeStackNavigator<Routes>();
@@ -111,6 +112,7 @@ function SectionStack({ root }: { root: keyof TabRoutes }) {
                 component={HishobToday}
                 options={{ header: () => <AppHeader /> }}
               />
+              <Stack.Screen name="CustomerDues" component={CustomerDues} />
               <Stack.Screen name="HishobSearch" component={HishobSearch} />
               <Stack.Screen name="HishobHistory" component={HishobHistory} />
               <Stack.Screen name="HishobDetails" component={HishobDetails} />

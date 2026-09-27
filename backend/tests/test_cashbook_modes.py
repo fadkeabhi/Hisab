@@ -59,6 +59,7 @@ def test_counted_estimates_separate_sales_and_keeps_next_opening(client, setup_s
     day = entry(client, owner, url, day, "EXPENSE", "300", "DIGITAL")
     day = entry(client, owner, url, day, "OTHER_CASH_IN", "200")
     day = entry(client, owner, url, day, "BANK_DEPOSIT", "1000")
+    day = entry(client, owner, url, day, "CREDIT_SALE", "300")
     response = close(
         client,
         owner,
@@ -91,6 +92,7 @@ def test_billing_cash_difference_and_snapshot_reclosing(client, setup_shop):
     base, url, day = start(client, setup_shop, "BILLING")
     day = entry(client, owner, url, day, "EXPENSE", "500")
     day = entry(client, owner, url, day, "SUPPLIER_PAYMENT", "100", "DIGITAL")
+    day = entry(client, owner, url, day, "CREDIT_SALE", "300")
     args = dict(
         cash_sales="5000",
         digital_sales="2500",
@@ -147,7 +149,7 @@ def test_entries_digital_and_credit_do_not_increase_galla_and_search_stays_cash_
 def test_non_entry_modes_reject_sale_transactions_and_invalid_closings(client, setup_shop, mode):
     owner = setup_shop[0]
     _, url, day = start(client, setup_shop, mode)
-    for kind in ["CASH_SALE", "DIGITAL_SALE", "CREDIT_SALE"]:
+    for kind in ["CASH_SALE", "DIGITAL_SALE"]:
         response = client.post(
             url + "/transactions",
             headers=owner,
@@ -212,6 +214,7 @@ def test_month_boundary_uses_shop_date_not_utc_and_excludes_open_days(client, se
     owner = setup_shop[0]
     base, url, day = start(client, setup_shop, "BILLING")
     assert day["date"] == "2027-04-01"
+    day = entry(client, owner, url, day, "CREDIT_SALE", "0.03")
     result = close(
         client, owner, url, day, "1000.01", cash_sales="0.01", digital_sales="0.02", credit_sales="0.03"
     )
@@ -319,8 +322,7 @@ def test_total_only_billing_preserves_unknowns_and_can_be_refined(client, setup_
     closed = result.json()
     assert closed["total_sales"] == closed["unallocated_sales"] == "7000.00"
     assert all(
-        closed[key] is None
-        for key in ["cash_sales", "digital_sales", "credit_sales", "expected_closing_cash", "difference"]
+        closed[key] is None for key in ["cash_sales", "digital_sales", "expected_closing_cash", "difference"]
     )
     assert closed["actual_closing_cash"] == "3400.00"
     report_url = base + "/monthly-summary?month=" + day["date"][:7]
@@ -357,7 +359,6 @@ def test_total_only_billing_preserves_unknowns_and_can_be_refined(client, setup_
     [
         {},
         {"total_sales": "100", "cash_sales": "100"},
-        {"total_sales": "100", "digital_sales": "0"},
         {"total_sales": "100", "credit_sales": "0"},
         {"total_sales": "100", "digital_sales": "80", "credit_sales": "21"},
         {"total_sales": "-1"},
@@ -394,6 +395,8 @@ def test_total_billing_known_payments_calculate_cash_exactly(
     client, setup_shop, total, digital, credit, cash
 ):
     _, url, day = start(client, setup_shop, "BILLING", opening="0")
+    if credit != "0":
+        day = entry(client, setup_shop[0], url, day, "CREDIT_SALE", credit)
     result = close(
         client,
         setup_shop[0],

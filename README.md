@@ -6,6 +6,8 @@ A working Expo / React Native / TypeScript app and FastAPI / MongoDB API for sho
 
 Choose **Count cash**, **Enter sales**, or **Use billing totals** in Account → Shop settings (or Hishob → Choose Hishob method before opening a day). Expenses can be paid from cash or digitally. Closing records money removed for the bank/home and carries only cash kept in the galla into tomorrow. **Calendar & sales** shows monthly totals with recorded and estimated sales separated. See [methods, calculations, API changes and examples](docs/HISHOB-METHODS.md).
 
+Billing close now uses one grand-total form, with **I know the totals** selected by default. Record unpaid sales individually; their remaining amount appears automatically at closing. Open **Hishob → Customer dues** to search unpaid/paid bills, collect partial or full payments by cash or UPI/card, and review receipts. Cash collected against old dues enters the galla without becoming a new sale. See [customer dues and closing rules](docs/HISHOB-METHODS.md#customer-dues).
+
 ## Web / PWA pilot
 
 Hishob can be installed from a web link with persistent browser login, connection recovery and safe app updates. Access is unrestricted; the first ten owners get all existing owner features. See [PWA deployment and pilot guide](docs/PWA-PILOT.md) for Atlas, Render, Vercel, local preview and device checks. Password login and owner recovery email setup are described in [Password accounts and recovery](docs/PASSWORD-AUTH.md).
@@ -355,8 +357,8 @@ The npm dependency override pins `xcode`’s transitive `uuid` to 11.1.1, retain
 
 ## Verified in this workspace
 
-- 100 backend integration tests passed against real MongoDB, including browser cookies, CSRF, session limits, mobile-number changes, native bearer compatibility and total-only billing.
-- 19 workflow/formatting Playwright checks cover attendance, account flows, the cash register, history, search and currency editing, cash-count/billing modes, total-only reports, monthly sales, contextual help, opening-cash refresh and the team attendance calendar. 4 additional PWA checks cover production-export installation metadata, persistent login, offline recovery, drafts, safe updates and unconfirmed saves.
+- 108 backend integration tests passed against real MongoDB, including browser cookies, CSRF, session limits, mobile-number changes, native bearer compatibility and total-only billing.
+- 20 workflow/formatting Playwright checks cover attendance, account flows, the cash register, history, search and currency editing, cash-count/billing modes, total-only reports, monthly sales, contextual help, opening-cash refresh and the team attendance calendar. 4 additional PWA checks cover production-export installation metadata, persistent login, offline recovery, drafts, safe updates and unconfirmed saves. Latest PWA run: 3 passed; the installation check is blocked by existing public icons measuring 1254×1254 instead of their declared 192×192 and 512×512 sizes.
 - TypeScript, ESLint, Prettier, Ruff lint/format checks passed.
 - Expo Doctor: 21/21 checks passed.
 - iOS, Android, and web production JavaScript bundles exported successfully.
