@@ -1,3 +1,4 @@
+import { phoneError } from '../phone';
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -223,6 +224,8 @@ export function OwnerProfile({ navigation }: NativeStackScreenProps<Routes, 'Own
       />
       <Card>
         <Field
+          required
+          minLength={2}
           label="Your name"
           value={name}
           onChangeText={setName}
@@ -286,7 +289,7 @@ export function ChangeMobile({ navigation }: NativeStackScreenProps<Routes, 'Cha
             <Button
               title="Send confirmation email"
               busy={action.busy}
-              disabled={mobile.length < 8 || !password}
+              disabled={!!phoneError(mobile) || !password}
               onPress={() =>
                 void action.run(async () => {
                   setChallenge(
@@ -308,6 +311,8 @@ export function ChangeMobile({ navigation }: NativeStackScreenProps<Routes, 'Cha
               <Text style={styles.small}>Development email code: {challenge.dev_otp}</Text>
             )}
             <Field
+              required
+              minLength={6}
               label="Email code"
               value={code}
               onChangeText={setCode}

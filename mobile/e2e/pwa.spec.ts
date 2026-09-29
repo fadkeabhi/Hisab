@@ -20,7 +20,7 @@ async function start(page: Page) {
 }
 
 async function transaction(page: Page) {
-  await page.getByLabel('Hishob tab', { exact: true }).click();
+  await page.getByLabel('Cashbook tab', { exact: true }).click();
   await page.getByRole('textbox', { name: 'Opening cash', exact: true }).fill('1000');
   await page.getByRole('button', { name: 'Start today’s Hishob', exact: true }).click();
   await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
@@ -84,7 +84,7 @@ test('installable shell, persistent HttpOnly login, offline cold start and logou
   expect(cachePaths).toContain('/index.html');
   expect(cachePaths.some((path) => path.startsWith('/api'))).toBe(false);
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
-  await page.getByLabel('Account tab', { exact: true }).click();
+  await page.getByRole('button', { name: 'Open account', exact: true }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Continue as Owner', exact: true })).toBeVisible();
   await page.reload();

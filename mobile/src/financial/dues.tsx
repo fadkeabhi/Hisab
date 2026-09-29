@@ -85,6 +85,11 @@ function ReceivePayment({
       </Text>
       <ErrorText message={action.error} />
       <Button
+        validationMessage={
+          value !== null && value > (parseMoney(due.remaining_amount) ?? BigInt(0))
+            ? 'Payment cannot exceed the remaining due.'
+            : undefined
+        }
         title="Confirm payment received"
         busy={action.busy}
         disabled={

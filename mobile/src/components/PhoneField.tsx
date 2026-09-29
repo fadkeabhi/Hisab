@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import { phoneError, phoneRule } from '../phone';
+import React, { useRef, useState } from 'react';
 import { FlatList, Keyboard, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import countries from '../data/countries.json';
-import { colors, styles } from './ui';
+import { ErrorText, useFieldValidation, colors, styles } from './ui';
 import { SearchField } from './ListControls';
 
 const india = countries.find((country) => country.region === 'IN')!;
@@ -27,6 +28,10 @@ export function PhoneField({
   label?: string;
   helperText?: string;
 }) {
+  const input = useRef<TextInput>(null);
+  const edited = useRef(false);
+  const [touched, setTouched] = useState(false);
+  const [limitError, setLimitError] = useState('');
   const [focused, setFocused] = useState(false);
   const [preferred, setPreferred] = useState(india);
   const [open, setOpen] = useState(false);
@@ -34,13 +39,36 @@ export function PhoneField({
   const insets = useSafeAreaInsets();
   const country = countryFor(value, preferred);
   const national = value.startsWith(country.code) ? value.slice(country.code.length) : value;
+  const validation = phoneError(value, country.region);
+  useFieldValidation(validation, () => {
+    setTouched(true);
+    input.current?.focus();
+  });
+  const accept = (next: string, selected: typeof india) => {
+    const rule = phoneRule(selected.region);
+    const max = Math.max(...rule.lengths);
+    const national = next.slice(selected.code.length);
+    // Accept a pasted domestic trunk prefix only when removing it produces a valid mobile.
+    if (rule.prefix && /^\d+$/.test(rule.prefix) && national.startsWith(rule.prefix)) {
+      const withoutPrefix = national.slice(rule.prefix.length);
+      if (!phoneError(selected.code + withoutPrefix, selected.region))
+        next = selected.code + withoutPrefix;
+    }
+    if (next.slice(selected.code.length).length > max) {
+      setLimitError(`Use no more than ${max} digits for ${selected.name}.`);
+      return;
+    }
+    setLimitError('');
+    setPreferred(selected);
+    onChange(next);
+  };
   const term = query.trim().toLowerCase();
   const matches = countries.filter((item) =>
     `${item.name} ${item.region} ${item.code}`.toLowerCase().includes(term),
   );
   return (
     <View style={{ gap: 9 }}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>{label} · Required</Text>
       <View
         style={{
           flexDirection: 'row',
@@ -78,17 +106,21 @@ export function PhoneField({
           <Ionicons name="chevron-down" size={14} color={colors.green} />
         </Pressable>
         <TextInput
+          ref={input}
           accessibilityLabel={label}
           value={national}
           onChangeText={(text) => {
+            edited.current = true;
             const cleaned = text.trim().replace(/[^\d+]/g, '');
             if (cleaned.startsWith('+')) {
-              setPreferred(countryFor(cleaned, country));
-              onChange(cleaned);
-            } else onChange(country.code + cleaned.replace(/\+/g, ''));
+              accept(cleaned, countryFor(cleaned, country));
+            } else accept(country.code + cleaned.replace(/\+/g, ''), country);
           }}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => {
+            setFocused(false);
+            if (edited.current) setTouched(true);
+          }}
           keyboardType="phone-pad"
           autoComplete="tel-national"
           textContentType="telephoneNumber"
@@ -112,6 +144,7 @@ export function PhoneField({
       <Text style={styles.small}>
         {country.name} · {helperText}
       </Text>
+      <ErrorText message={limitError || (touched ? validation : '')} />
       {open && (
         <Modal transparent visible animationType="fade" onRequestClose={() => setOpen(false)}>
           <View
@@ -165,6 +198,7 @@ export function PhoneField({
                     accessibilityLabel={`${item.name} ${item.code}`}
                     accessibilityState={{ selected: item.region === country.region }}
                     onPress={() => {
+                      setLimitError('');
                       setPreferred(item);
                       onChange(item.code + national);
                       setOpen(false);

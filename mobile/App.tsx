@@ -9,7 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { WebExperience } from './src/pwa';
 import { AuthProvider, useAuth } from './src/auth';
-import { AppHeader, BrandMark } from './src/components/Brand';
+import { AccountButton, AppHeader, BrandMark } from './src/components/Brand';
 import { Button, colors, ErrorText, Heading, Loading, Page, styles } from './src/components/ui';
 import { useAction } from './src/hooks';
 import { MobileLogin, RoleSelection } from './src/screens/AuthScreens';
@@ -60,6 +60,8 @@ function SectionStack({ root }: { root: keyof TabRoutes }) {
       screenOptions={{
         headerShadowVisible: false,
         headerTitle: () => <BrandMark size={34} />,
+        headerRight: () => <AccountButton />,
+        headerTitleAlign: 'left',
         headerBackButtonDisplayMode: 'minimal',
         headerTintColor: colors.green,
         contentStyle: { backgroundColor: colors.background },
@@ -179,8 +181,8 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.muted,
         tabBarHideOnKeyboard: true,
         tabBarLabelPosition: 'below-icon',
-        tabBarLabelStyle: { fontSize: 11, lineHeight: 16, fontWeight: '700', marginTop: 2 },
-        tabBarIconStyle: { width: 48, height: 28 },
+        tabBarLabelStyle: { fontSize: 12, lineHeight: 18, fontWeight: '600', marginTop: 3 },
+        tabBarIconStyle: { width: 52, height: 28 },
         tabBarStyle: {
           backgroundColor: '#FFFDF9',
           borderTopColor: colors.line,
@@ -188,11 +190,11 @@ function MainTabs() {
           paddingBottom: Math.max(8, insets.bottom),
           height: 78 + insets.bottom,
         },
-        tabBarAccessibilityLabel: `${route.name === 'Hishob' ? 'Hishob' : route.name === 'Dashboard' ? 'Home' : route.name === 'TodayAttendance' ? 'Register' : route.name === 'Workers' ? 'Team' : route.name === 'MyAttendance' ? (worker ? 'Attendance' : 'My day') : 'Account'} tab`,
+        tabBarAccessibilityLabel: `${route.name === 'Hishob' ? 'Cashbook' : route.name === 'Dashboard' ? 'Home' : route.name === 'TodayAttendance' ? 'Attendance' : route.name === 'Workers' ? 'Team' : route.name === 'MyAttendance' ? (worker ? 'Attendance' : 'My day') : 'Account'} tab`,
         tabBarIcon: ({ focused, color }) => (
           <View
             style={{
-              width: 48,
+              width: 52,
               height: 28,
               alignItems: 'center',
               justifyContent: 'center',
@@ -210,21 +212,35 @@ function MainTabs() {
         <Tabs.Screen
           name="TodayAttendance"
           component={RegisterStack}
-          options={{ title: 'Register' }}
+          options={{ title: 'Attendance' }}
         />
       )}
       {(worker || (session!.role === 'MANAGER' && !finance)) && (
         <Tabs.Screen
           name="MyAttendance"
           component={AttendanceStack}
-          options={{ title: worker ? 'Attendance' : 'My day' }}
+          options={{
+            title: worker ? 'Attendance' : 'My attendance',
+            ...(!worker
+              ? { tabBarButton: () => null, tabBarItemStyle: { display: 'none' as const } }
+              : {}),
+          }}
         />
       )}
       {finance && (
-        <Tabs.Screen name="Hishob" component={HishobStack} options={{ title: 'Hishob' }} />
+        <Tabs.Screen name="Hishob" component={HishobStack} options={{ title: 'Cashbook' }} />
       )}
       {!worker && <Tabs.Screen name="Workers" component={TeamStack} options={{ title: 'Team' }} />}
-      <Tabs.Screen name="Profile" component={AccountStack} options={{ title: 'Account' }} />
+      {/* Account keeps its own history and drafts, but is opened from the header. */}
+      <Tabs.Screen
+        name="Profile"
+        component={AccountStack}
+        options={{
+          title: 'Account',
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
     </Tabs.Navigator>
   );
 }

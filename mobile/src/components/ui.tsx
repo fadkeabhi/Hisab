@@ -1,5 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { InfoHelp } from './InfoHelp';
 import React from 'react';
+
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,6 +17,34 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Attendance, Status } from '../types';
+
+type InvalidField = { message: string; focus: () => void };
+const FormContext = React.createContext<{
+  fields: Map<string, InvalidField>;
+  refresh: () => void;
+  reveal: (field: View | null) => void;
+} | null>(null);
+export function useFieldValidation(message: string, focus: () => void) {
+  const form = React.useContext(FormContext);
+  const id = React.useId();
+  const focusRef = React.useRef(focus);
+  React.useEffect(() => {
+    focusRef.current = focus;
+  });
+  const fields = form?.fields;
+  const refresh = form?.refresh;
+  React.useEffect(() => {
+    if (!fields) return;
+    if (message)
+      fields.set(id, { message, focus: () => requestAnimationFrame(() => focusRef.current()) });
+    else fields.delete(id);
+    refresh?.();
+    return () => {
+      fields.delete(id);
+      refresh?.();
+    };
+  }, [fields, refresh, id, message]);
+}
 
 export const colors = {
   ink: '#123C31',
@@ -81,38 +111,61 @@ export function Page({
 }) {
   const [refreshing, setRefreshing] = React.useState(false);
   const insets = useSafeAreaInsets();
+  const [fields] = React.useState(() => new Map<string, InvalidField>());
+  const [revision, render] = React.useReducer((n: number) => n + 1, 0);
+  const scroll = React.useRef<ScrollView>(null);
+  const content = React.useRef<View>(null);
+  const reveal = React.useCallback((field: View | null) => {
+    if (Platform.OS !== 'web' && field && content.current) {
+      field.measureLayout(
+        content.current,
+        (_x, y) => scroll.current?.scrollTo({ y: Math.max(0, y - 16), animated: true }),
+        () => {},
+      );
+    }
+  }, []);
+  const form = React.useMemo(
+    () => ({ fields, refresh: render, reveal, revision }),
+    [fields, reveal, revision],
+  );
   return (
-    <SafeAreaView
-      edges={topInset ? ['top', 'left', 'right'] : ['left', 'right']}
-      style={styles.page}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <FormContext.Provider value={form}>
+      <SafeAreaView
+        edges={topInset ? ['top', 'left', 'right'] : ['left', 'right']}
+        style={styles.page}
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: Math.max(28, insets.bottom + 16) },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            refresh ? (
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={() => {
-                  setRefreshing(true);
-                  void refresh().finally(() => setRefreshing(false));
-                }}
-                tintColor={colors.green}
-              />
-            ) : undefined
-          }
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <ScrollView
+            ref={scroll}
+            automaticallyAdjustKeyboardInsets
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: Math.max(28, insets.bottom + 16) },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              refresh ? (
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => {
+                    setRefreshing(true);
+                    void refresh().finally(() => setRefreshing(false));
+                  }}
+                  tintColor={colors.green}
+                />
+              ) : undefined
+            }
+          >
+            <View ref={content} style={{ gap: 18 }}>
+              {children}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </FormContext.Provider>
   );
 }
 export function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -134,6 +187,7 @@ export function Button({
   busy,
   danger,
   accessibilityLabel,
+  validationMessage,
 }: {
   title: string;
   onPress: () => void;
@@ -142,52 +196,192 @@ export function Button({
   busy?: boolean;
   danger?: boolean;
   accessibilityLabel?: string;
+  validationMessage?: string;
+}) {
+  const form = React.useContext(FormContext);
+  const [attempted, setAttempted] = React.useState(false);
+  const submit =
+    /^(save|confirm|continue|start|close today|create|register|sign in|set password|update|send|verify)/i.test(
+      title,
+    );
+  const first = form?.fields.values().next().value;
+  const explanation =
+    validationMessage ||
+    (submit && disabled ? first?.message || 'Complete the required fields above to continue.' : '');
+  const icon: React.ComponentProps<typeof Ionicons>['name'] | undefined = secondary
+    ? title.startsWith('Edit ')
+      ? 'create-outline'
+      : title.startsWith('Delete ·')
+        ? 'trash-outline'
+        : title === 'Search'
+          ? 'search-outline'
+          : title === '←'
+            ? 'chevron-back'
+            : title === '→'
+              ? 'chevron-forward'
+              : undefined
+    : undefined;
+  if (icon)
+    return (
+      <IconButton
+        name={icon}
+        label={accessibilityLabel || title}
+        onPress={onPress}
+        disabled={disabled || busy}
+        danger={title.startsWith('Delete ·')}
+      />
+    );
+  return (
+    <View style={{ gap: 8 }}>
+      {attempted && explanation ? <ErrorText message={explanation} /> : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || title}
+        disabled={busy || (disabled && !explanation)}
+        onPressOut={() => {
+          if (explanation && !busy) {
+            setAttempted(true);
+            first?.focus();
+          }
+        }}
+        onPress={() => {
+          if (explanation) {
+            setAttempted(true);
+            first?.focus();
+            return;
+          }
+          onPress();
+        }}
+        style={({ pressed }) => ({
+          backgroundColor: secondary ? colors.mint : danger ? colors.red : colors.green,
+          borderRadius: 14,
+          paddingVertical: 15,
+          paddingHorizontal: 18,
+          alignItems: 'center',
+          opacity: busy || (disabled && !explanation) ? 0.45 : pressed ? 0.8 : 1,
+        })}
+      >
+        {busy ? (
+          <ActivityIndicator color={secondary ? colors.green : colors.white} />
+        ) : (
+          <Text
+            style={{
+              color: secondary ? colors.green : colors.white,
+              fontSize: 15,
+              fontWeight: '600',
+            }}
+          >
+            {title}
+          </Text>
+        )}
+      </Pressable>
+    </View>
+  );
+}
+export function IconButton({
+  name,
+  label,
+  onPress,
+  disabled,
+  danger = false,
+}: {
+  name: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  danger?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel || title}
-      disabled={disabled || busy}
+      accessibilityLabel={label}
+      accessibilityHint={label}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        backgroundColor: secondary ? colors.mint : danger ? colors.red : colors.green,
+        minWidth: 48,
+        minHeight: 48,
+        padding: 12,
         borderRadius: 14,
-        paddingVertical: 15,
-        paddingHorizontal: 18,
         alignItems: 'center',
-        opacity: disabled || busy ? 0.45 : pressed ? 0.8 : 1,
+        justifyContent: 'center',
+        alignSelf: 'flex-start',
+        backgroundColor: colors.mint,
+        opacity: disabled ? 0.4 : pressed ? 0.65 : 1,
       })}
     >
-      {busy ? (
-        <ActivityIndicator color={secondary ? colors.green : colors.white} />
-      ) : (
-        <Text
-          style={{
-            color: secondary ? colors.green : colors.white,
-            fontSize: 15,
-            fontWeight: '600',
-          }}
-        >
-          {title}
-        </Text>
-      )}
+      <Ionicons name={name} size={23} color={danger ? colors.red : colors.green} />
     </Pressable>
   );
 }
 export function Field({
   label,
   help,
+  required = false,
+  error = '',
+  minLength = 1,
   ...props
-}: TextInputProps & { label: string; help?: string }) {
+}: TextInputProps & {
+  label: string;
+  help?: string;
+  required?: boolean;
+  error?: string;
+  minLength?: number;
+}) {
+  const input = React.useRef<TextInput>(null);
+  const wrapper = React.useRef<View>(null);
+  const form = React.useContext(FormContext);
+  const [touched, setTouched] = React.useState(false);
+  const edited = React.useRef(false);
+  const message =
+    error ||
+    (required && (props.value || '').trim().length < minLength
+      ? `Enter ${label.toLowerCase()}${minLength > 1 ? ` (at least ${minLength} characters)` : ''}.`
+      : '');
+  const focus = () => {
+    setTouched(true);
+    input.current?.focus();
+    form?.reveal(wrapper.current);
+    if (Platform.OS === 'web')
+      (input.current as unknown as HTMLElement)?.scrollIntoView?.({
+        behavior: 'smooth',
+        block: 'center',
+      });
+  };
+  useFieldValidation(message, focus);
   return (
-    <View>
+    <View ref={wrapper}>
       {help ? <InfoHelp title={label}>{help}</InfoHelp> : <Text style={styles.label}>{label}</Text>}
+      <Text style={[styles.small, { marginBottom: 6 }]}>{required ? 'Required' : 'Optional'}</Text>
       <TextInput
+        {...props}
+        ref={input}
         accessibilityLabel={label}
         placeholderTextColor="#8D9A94"
-        style={styles.input}
-        {...props}
+        onChangeText={(value) => {
+          edited.current = true;
+          props.onChangeText?.(value);
+        }}
+        onBlur={(event) => {
+          if (edited.current) setTouched(true);
+          props.onBlur?.(event);
+        }}
+        onFocus={(event) => {
+          if (Platform.OS === 'web')
+            (input.current as unknown as HTMLElement)?.scrollIntoView?.({
+              behavior: 'smooth',
+              block: 'center',
+            });
+          form?.reveal(wrapper.current);
+          props.onFocus?.(event);
+        }}
+        style={[
+          styles.input,
+          props.style,
+          touched && message ? { borderColor: colors.red } : undefined,
+        ]}
       />
+      {touched && <ErrorText message={message} />}
     </View>
   );
 }

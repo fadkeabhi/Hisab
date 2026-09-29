@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Platform, ScrollView, Text, View } from 'react-native';
 import { FilterChips } from '../components/ListControls';
 import { Card, colors, Field, styles } from '../components/ui';
-import { editMoneyInput, formatMoneyInput, money } from './money';
+import { editMoneyInput, formatMoneyInput, money, parseMoney } from './money';
 import { FinancialHelp, financialHelp } from './help';
 import { Totals, TransactionType, transactionTypes } from './types';
 
@@ -10,10 +10,14 @@ export function MoneyField({
   label,
   value,
   onChange,
+  required = true,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  required?: boolean;
+  error?: string;
 }) {
   const caret = useRef({ start: 0, end: 0 });
   const [selection, setSelection] = useState<{ start: number; end: number }>();
@@ -21,6 +25,16 @@ export function MoneyField({
     <View>
       <Field
         label={label}
+        required={required}
+        error={
+          error ||
+          ((required || value) &&
+          (parseMoney(value) === null ||
+            (label === 'Amount (₹)' && parseMoney(value) === BigInt(0)))
+            ? `Enter a valid ${label.toLowerCase()}${label === 'Amount (₹)' ? ' greater than zero' : ''}.`
+            : '')
+        }
+        selectTextOnFocus={/^0(?:\.0*)?$/.test(value)}
         help={financialHelp[label]}
         value={formatMoneyInput(value)}
         selection={selection}

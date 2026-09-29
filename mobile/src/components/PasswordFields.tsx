@@ -8,16 +8,26 @@ export function PasswordField({
   value,
   onChange,
   fresh = false,
+  error = '',
 }: {
   label?: string;
   value: string;
   onChange: (value: string) => void;
   fresh?: boolean;
+  error?: string;
 }) {
   const [visible, setVisible] = useState(false);
   return (
     <View>
       <Field
+        required
+        minLength={fresh ? 12 : 1}
+        error={
+          error ||
+          (fresh && value.trim() !== value
+            ? 'Remove spaces at the beginning or end of the password.'
+            : '')
+        }
         label={label}
         style={[styles.input, { paddingRight: 60 }]}
         value={value}
@@ -78,7 +88,13 @@ export function NewPasswordFields({
         common passwords and your mobile number.
       </Text>
       <PasswordField label="New password" value={password} onChange={setPassword} fresh />
-      <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} fresh />
+      <PasswordField
+        error={confirm && password !== confirm ? 'Passwords do not match.' : ''}
+        label="Confirm password"
+        value={confirm}
+        onChange={setConfirm}
+        fresh
+      />
       {!!confirm && password !== confirm && (
         <Text style={styles.small}>Passwords do not match yet.</Text>
       )}

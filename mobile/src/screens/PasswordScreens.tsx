@@ -37,6 +37,7 @@ export function PasswordSecurity() {
       {enroll && !challenge ? (
         <>
           <Field
+            required
             label="Email address"
             value={email}
             onChangeText={setEmail}
@@ -65,6 +66,8 @@ export function PasswordSecurity() {
                 </Text>
               )}
               <Field
+                required
+                minLength={6}
                 label="Email code"
                 value={code}
                 onChangeText={setCode}

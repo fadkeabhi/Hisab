@@ -2,10 +2,10 @@ import { login } from './auth-helpers';
 import { expect, test, Page } from '@playwright/test';
 
 async function owner(page: Page) {
-  await login(page, 'Owner', '+9188' + String(Date.now()).slice(-8));
+  await login(page, 'Owner', '+9198' + String(Date.now()).slice(-8));
   await page.getByRole('textbox', { name: 'Shop name', exact: true }).fill('Daily Hishob Shop');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
-  await page.getByLabel('Hishob tab', { exact: true }).click();
+  await page.getByLabel('Cashbook tab', { exact: true }).click();
 }
 async function method(page: Page, label: string) {
   await page.getByRole('button', { name: 'Choose Hishob method', exact: true }).click();
@@ -104,7 +104,14 @@ test('billing shop reconciles cash only and safely corrects a preserved closing'
     .fill('6000');
   await expect(
     page.getByRole('button', { name: 'Close today’s Hishob', exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Close today’s Hishob', exact: true }).click();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'Reduce bank/home withdrawals: they exceed the cash counted.' })
+      .first(),
+  ).toBeVisible();
   await page
     .getByRole('textbox', { name: 'Cash removed for bank at closing', exact: true })
     .fill('2000');
@@ -141,6 +148,7 @@ test('total-only billing saves unknown payment split and can later reconcile kno
   await expect(page.getByText('Available at closing', { exact: true })).toBeVisible();
   await expense(page, 'Cash from galla', '500');
   await page.getByRole('button', { name: 'Close day', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
   await page.getByRole('button', { name: 'Non-cash sales: Not known', exact: true }).click();
   await page.getByRole('textbox', { name: 'Total sales from billing', exact: true }).fill('7000');
   await expect(
@@ -197,7 +205,16 @@ test('total-only billing saves unknown payment split and can later reconcile kno
   ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Close today’s Hishob', exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Close today’s Hishob', exact: true }).click();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({
+        hasText: 'Check billing total and UPI/card sales: payments cannot exceed total sales.',
+      })
+      .first(),
+  ).toBeVisible();
   await page.getByRole('textbox', { name: 'UPI / card sales', exact: true }).fill('2000');
   await expect(page.getByText('Calculated cash sales · ₹5,000', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Difference -₹100', { exact: true })).toBeVisible();
@@ -265,7 +282,11 @@ test('customer dues collect partial cash and digital payments and feed billing c
   await page.getByRole('textbox', { name: 'Payment received (₹)', exact: true }).fill('1100');
   await expect(
     page.getByRole('button', { name: 'Confirm payment received', exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Confirm payment received', exact: true }).click();
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Payment cannot exceed the remaining due.' }).first(),
+  ).toBeVisible();
   await page.getByRole('textbox', { name: 'Payment received (₹)', exact: true }).fill('300');
   await page.getByRole('button', { name: 'Confirm payment received', exact: true }).click();
   await expect(page.getByText('Due ₹700', { exact: true })).toBeVisible();

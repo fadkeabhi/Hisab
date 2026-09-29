@@ -4,10 +4,10 @@ import { login } from './auth-helpers';
 test('Hishob explains transaction choices without changing entered amounts', async ({
   page,
 }, info) => {
-  await login(page, 'Owner', '+9181' + String(Date.now()).slice(-8));
+  await login(page, 'Owner', '+9191' + String(Date.now()).slice(-8));
   await page.getByRole('textbox', { name: 'Shop name', exact: true }).fill('Guided shop');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
-  await page.getByLabel('Hishob tab', { exact: true }).click();
+  await page.getByLabel('Cashbook tab', { exact: true }).click();
   await page.getByRole('button', { name: 'About Opening cash', exact: true }).click();
   await expect(page.getByText(/A past shortage is not deducted a second time/)).toBeVisible();
   await page.getByRole('textbox', { name: 'Opening cash', exact: true }).fill('1500');
@@ -30,16 +30,16 @@ test('Hishob explains transaction choices without changing entered amounts', asy
 });
 
 test('team register browses past dates, filters and returns to today', async ({ page }, info) => {
-  await login(page, 'Owner', '+9182' + String(Date.now()).slice(-8));
+  await login(page, 'Owner', '+9192' + String(Date.now()).slice(-8));
   await page.getByRole('textbox', { name: 'Shop name', exact: true }).fill('Calendar shop');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
   await page.getByRole('button', { name: 'Add worker', exact: true }).click();
   await page.getByRole('textbox', { name: 'Worker name', exact: true }).fill('Asha');
   await page
     .getByRole('textbox', { name: 'Mobile number', exact: true })
-    .fill('+9183' + String(Date.now()).slice(-8));
+    .fill('+9193' + String(Date.now()).slice(-8));
   await page.getByRole('button', { name: 'Add worker', exact: true }).click();
-  await page.getByLabel('Register tab', { exact: true }).click();
+  await page.getByLabel('Attendance tab', { exact: true }).click();
   await page.getByRole('button', { name: 'Mark in · Asha', exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Attendance filter: Present, 1', exact: true }),

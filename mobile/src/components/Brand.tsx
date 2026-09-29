@@ -1,8 +1,12 @@
 import React from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth';
-import { colors, styles } from './ui';
+import { colors } from './ui';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Routes } from '../types';
 import { ShopSwitcher } from './ShopSwitcher';
 
 export const logo = require('../../assets/brand/hishob-logo.png');
@@ -33,6 +37,30 @@ export function BrandMark({ size = 46, subtitle }: { size?: number; subtitle?: s
     </View>
   );
 }
+export function AccountButton() {
+  const navigation = useNavigation<NativeStackNavigationProp<Routes>>();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Open account"
+      onPress={() => navigation.navigate('Profile')}
+      style={({ pressed }) => ({
+        minHeight: 44,
+        paddingHorizontal: 10,
+        borderRadius: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: colors.mint,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Ionicons name="person-circle-outline" size={22} color={colors.green} />
+      <Text style={{ color: colors.green, fontSize: 12, fontWeight: '600' }}>Account</Text>
+    </Pressable>
+  );
+}
+
 export function AppHeader() {
   const { session } = useAuth();
   const multipleShops = (session?.memberships.length || 0) > 1;
@@ -42,37 +70,26 @@ export function AppHeader() {
         style={{
           paddingHorizontal: 20,
           paddingVertical: 10,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
+          gap: 10,
           maxWidth: 720,
           width: '100%',
           alignSelf: 'center',
         }}
       >
-        <BrandMark
-          size={multipleShops ? 36 : 46}
-          subtitle={multipleShops ? undefined : 'YOUR SHOP. YOUR PEOPLE.'}
-        />
-        {multipleShops ? (
-          <ShopSwitcher />
-        ) : (
-          <View
-            style={{
-              backgroundColor: colors.mint,
-              borderRadius: 20,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-            }}
-          >
-            <Text style={[styles.small, { color: colors.green, fontWeight: '700', fontSize: 11 }]}>
-              {session?.role === 'OWNER'
-                ? 'Owner'
-                : session?.role === 'MANAGER'
-                  ? 'Manager'
-                  : 'Worker'}
-            </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <BrandMark size={36} />
+          <AccountButton />
+        </View>
+        {multipleShops && (
+          <View style={{ alignItems: 'flex-start' }}>
+            <ShopSwitcher />
           </View>
         )}
       </View>

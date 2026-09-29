@@ -88,15 +88,19 @@ Workers never mark or edit attendance. The self-check-in/out endpoints accept on
 
 Bottom navigation follows each role:
 
-- **Owner:** Home, Register, Hishob, Team, Account. Team lists workers and managers together; manage managers from Team or Account. Shop settings are available from Home or Account.
-- **Manager:** Home, Register, My day, Team, Account. With financial access, Hishob replaces My day in the tab bar; personal attendance actions and the monthly calendar stay available from Home and Account.
-- **Worker:** Home, Attendance, Account. Attendance remains read-only.
+- **Owner:** Home, Attendance, Cashbook, Team. Team lists workers and managers together; manage managers from Team or Account. Shop settings are available from Home or Account.
+- **Manager:** Home, Attendance, Team, plus Cashbook when financial access is enabled. Personal attendance actions and the monthly calendar are available from Home and Account.
+- **Worker:** Home and Attendance. Attendance remains read-only.
 
-When you belong to more than one shop, the top-right header shows the current shop with a dropdown arrow. Tap it to open the shop picker. Selecting a shop resets navigation and filters to that shop; the picker is hidden for single-shop accounts.
+**Account** is available from the header on main and detail pages. It keeps its own navigation history, so opening it does not replace an unfinished form in another section.
+
+When you belong to more than one shop, the header shows the current shop with a dropdown arrow below the logo. Tap it to open the shop picker. Selecting a shop resets navigation and filters to that shop; the picker is hidden for single-shop accounts.
 
 **Team** defaults to active staff, with Everyone/Workers/Managers and Active/Inactive/All filters. Search matches names (case-insensitive) or mobile numbers, including formatted numbers. Status counts reflect the current search and role filter. Managers can read the shared directory but still cannot edit manager profiles.
 
-**Register** shows tappable counts for Everyone, Present, Absent, Not marked, Half day, and Leave, plus name/mobile search. Counts always describe the whole shop register; the list reflects the selected status and search. Inactive staff with a recorded entry today remain in the register. Missing entries stay **Not marked**, never automatically Absent. Home retains its simple daily totals without an attendance progress bar.
+**Attendance** shows tappable counts for Everyone, Present, Absent, Not marked, Half day, and Leave, plus name/mobile search. Counts always describe the whole shop register; the list reflects the selected status and search. Inactive staff with a recorded entry today remain in the register. Missing entries stay **Not marked**, never automatically Absent. Home shows active team totals and attendance progress, with a primary action to mark or view attendance. Progress includes every recorded status, including absence, half-day and leave. Failed refreshes identify counts as last loaded; unavailable data is not shown as zero.
+
+Use the Attendance date arrows to move one day at a time, or tap the date to open the calendar. Choosing a date closes the calendar and shows that day’s register; **Back to today** returns to the current day. Member cards show status, recorded times, and the next available arrival/departure action. **View / edit** opens history and permitted corrections. The information button explains register rules without crowding the list.
 
 The supplied Hishob logo appears on the welcome screen, navigation headers, account screen, app icon, splash screen, and web favicon. Green, cream, and gold styling follows the logo. Native icons, splash screens, and the installed display name require a new native build; Expo Go does not represent the final standalone branding. Internal bundle/package IDs, token storage keys, JWT identifiers, and the database name retain their existing values to preserve compatibility. No environment-variable changes are required.
 
@@ -104,7 +108,7 @@ The mobile number field includes a searchable country-code picker (India +91 by 
 
 ## Phase 2 — Daily Hishob
 
-Open the **Hishob** bottom tab for today’s cash register, transaction search and the monthly calendar. Home and Account shortcuts also open this tab. It is visible to owners and managers with financial access; workers cannot access it. For managers with financial access, personal attendance is available from Home and Account, keeping the bottom bar to five tabs.
+Open the **Cashbook** bottom tab for today’s cash register, transaction search and the monthly calendar. Home and Account shortcuts also open this tab. It is visible to owners and managers with financial access; workers cannot access it. For managers with financial access, personal attendance is available from Home and Account, keeping the bottom bar to four tabs.
 
 Amount fields show Indian comma grouping as you type (for example `1,25,000.50`), including opening cash, transactions, corrections and closing cash. API values remain plain decimal strings.
 
@@ -177,7 +181,7 @@ The existing `/settings` and `/auth/me` responses include `hishob_mode`, the fin
 
 ### Test Phase 2 manually
 
-1. Register/sign in as Owner (development email verification code `123456`) and create a fresh shop. Open **Today's Hishob** from Home.
+1. Register/sign in as Owner (development email verification code `123456`) and create a fresh shop. Open **Cashbook** from Home.
 2. Enter opening cash **0** and start the day.
 3. Add **Cash sales ₹15,000**, **Expense ₹500** (Transport), and **Bank deposit ₹2,000**. Current Galla is **₹12,500**; at closing this becomes the expected cash for comparison with your count.
 4. Open **Close day**, enter **₹12,300** actual cash. Difference is **-₹200**. Choose **Cash shortage**, then close.

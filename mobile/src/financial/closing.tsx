@@ -1,3 +1,4 @@
+import { Calculator } from './Calculator';
 import { HelpButton as Button, FinancialHelp } from './help';
 import React, { useState } from 'react';
 import { Text } from 'react-native';
@@ -31,8 +32,12 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
   }, BigInt(0));
   const legacyCredit = signedPaise(initial.legacy_credit_sales || '0');
   const credit = decimal(entryCredit + legacyCredit);
-  const [bank, setBank] = useState(initial.closing_bank_deposit || '0');
-  const [home, setHome] = useState(initial.closing_withdrawal || '0');
+  const [bank, setBank] = useState(
+    Number(initial.closing_bank_deposit) ? initial.closing_bank_deposit! : '',
+  );
+  const [home, setHome] = useState(
+    Number(initial.closing_withdrawal) ? initial.closing_withdrawal! : '',
+  );
   const [differenceNote, setDifferenceNote] = useState('');
   const [notes, setNotes] = useState(initial.notes);
   const action = useAction();
@@ -41,14 +46,14 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
     !!actual ||
       !!total ||
       digital !== '0' ||
-      bank !== '0' ||
-      home !== '0' ||
+      !!bank ||
+      !!home ||
       !!differenceNote ||
       notes !== initial.notes,
   );
   const counted = parseMoney(actual);
-  const bankValue = parseMoney(bank),
-    homeValue = parseMoney(home);
+  const bankValue = parseMoney(bank || '0'),
+    homeValue = parseMoney(home || '0');
   const expenses = signedPaise(initial.cash_expenses ?? initial.expenses_total);
   const suppliers = signedPaise(initial.cash_supplier_payments ?? initial.supplier_payments);
   const earlierTransfers =
@@ -88,7 +93,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
   const needsNote = differenceValue !== null && differenceValue !== BigInt(0);
   const badEstimate = mode === 'COUNTED' && cashSales !== null && cashSales < BigInt(0);
   const transferError = retained !== null && retained < BigInt(0);
-  const invalidSplit = totalOnly && knowNonCash && (cashSales === null || cashSales < BigInt(0));
+  const invalidSplit = totalOnly && knowNonCash && cashSales !== null && cashSales < BigInt(0);
   const sales = totalOnly
     ? totalValue
     : cashSales !== null && digitalSales !== null && creditSales !== null
@@ -98,6 +103,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
     return <Text style={styles.subtitle}>This day is already closed.</Text>;
   return (
     <>
+      <Calculator />
       <Card>
         <Text style={styles.heading}>{modeLabels[mode]}</Text>
         <Text style={styles.subtitle}>
@@ -127,7 +133,12 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
         )}
         {mode !== 'ENTRIES' && (!totalOnly || knowNonCash) && (
           <>
-            <MoneyField label="UPI / card sales" value={digital} onChange={setDigital} />
+            <MoneyField
+              error={invalidSplit ? 'UPI/card and unpaid sales exceed the billing total.' : ''}
+              label="UPI / card sales"
+              value={digital}
+              onChange={setDigital}
+            />
             <Text style={styles.small}>
               Include payments collected for today’s sales. Exclude collections of older dues and
               owner transfers. Enter 0 if none.
@@ -162,7 +173,12 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
           Count before the closing transfers below. Cash already removed during the day must have
           its own bank deposit or withdrawal entry.
         </Text>
-        <MoneyField label="Actual cash in galla" value={actual} onChange={setActual} />
+        <MoneyField
+          error={badEstimate ? 'Review this cash count and the recorded cash movements.' : ''}
+          label="Actual cash in galla"
+          value={actual}
+          onChange={setActual}
+        />
         {mode === 'COUNTED' ? (
           <>
             <Text style={styles.heading}>
@@ -202,6 +218,8 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
             onChange={setDifferenceNote}
           />
           <Field
+            required
+            minLength={2}
             label="Difference note"
             value={differenceNote}
             onChangeText={setDifferenceNote}
@@ -212,11 +230,22 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
       <Card>
         <Text style={styles.heading}>2. Decide what stays in the galla</Text>
         <Text style={styles.small}>
-          Only enter cash you are removing now. Leave 0 if it is just a plan for later. Do not
+          Only enter cash you are removing now. Leave blank if you are not removing cash now. Do not
           repeat transfers already recorded above.
         </Text>
-        <MoneyField label="Cash removed for bank at closing" value={bank} onChange={setBank} />
-        <MoneyField label="Cash taken home at closing" value={home} onChange={setHome} />
+        <MoneyField
+          required={false}
+          error={transferError ? 'Bank and home amounts cannot exceed the cash counted.' : ''}
+          label="Cash removed for bank at closing"
+          value={bank}
+          onChange={setBank}
+        />
+        <MoneyField
+          required={false}
+          label="Cash taken home at closing"
+          value={home}
+          onChange={setHome}
+        />
         <Text style={styles.heading}>
           Cash kept for next day · {retained === null ? '—' : money(decimal(retained))}
         </Text>
@@ -231,24 +260,24 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
         multiline
         maxLength={1000}
       />
-      <ErrorText
-        message={
-          badEstimate
-            ? 'The count implies negative cash sales. Review opening cash, expenses and cash movements.'
-            : invalidSplit
-              ? 'UPI/card sales plus unpaid sales cannot exceed total sales.'
-              : transferError
-                ? 'You cannot remove more cash than you counted.'
-                : action.error
-        }
-      />
+      <ErrorText message={action.error} />
       <Button
         title="Close today’s Hishob"
         busy={action.busy}
+        validationMessage={
+          badEstimate
+            ? 'Review the cash count and movements: estimated cash sales are negative.'
+            : invalidSplit
+              ? 'Check billing total and UPI/card sales: payments cannot exceed total sales.'
+              : transferError
+                ? 'Reduce bank/home withdrawals: they exceed the cash counted.'
+                : undefined
+        }
         disabled={
           counted === null ||
           retained === null ||
           sales === null ||
+          (totalOnly && knowNonCash && cashSales === null) ||
           badEstimate ||
           invalidSplit ||
           transferError ||
@@ -263,8 +292,8 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
                 actual_closing_cash: actual.trim(),
                 notes,
                 difference_note: differenceNote,
-                closing_bank_deposit: bank,
-                closing_withdrawal: home,
+                closing_bank_deposit: bank || '0',
+                closing_withdrawal: home || '0',
                 ...(mode !== 'ENTRIES' && (!totalOnly || knowNonCash)
                   ? { digital_sales: digital, credit_sales: credit }
                   : {}),

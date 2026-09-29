@@ -1,7 +1,8 @@
+import { Calculator } from './Calculator';
 import { InfoHelp } from '../components/InfoHelp';
 import { HelpButton as Button, FinancialHelp, financialHelp, transactionHelp } from './help';
 import React, { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Modal, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useUnsavedChanges } from '../pwa';
 import { useAuth } from '../auth';
@@ -54,6 +55,8 @@ function NewDay({ initial, refresh }: { initial: TodayHishob; refresh: () => Pro
         <MoneyField label="Opening cash" value={opening} onChange={setOpening} />
         {override && (
           <Field
+            required
+            minLength={2}
             label="Opening change reason"
             value={reason}
             onChangeText={setReason}
@@ -92,8 +95,8 @@ export function HishobToday({ navigation }: NativeStackScreenProps<Routes, 'Hish
         title="Today’s Hishob"
         subtitle={`${selected!.shop.name} · ${resource.data?.date || 'Your daily cash register'}`}
       />
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View>
           <Button
             title="Search"
             accessibilityLabel="Search transactions"
@@ -109,6 +112,7 @@ export function HishobToday({ navigation }: NativeStackScreenProps<Routes, 'Hish
             onPress={() => navigation.navigate('HishobHistory')}
           />
         </View>
+        <Calculator />
       </View>
       <Button title="Customer dues" secondary onPress={() => navigation.navigate('CustomerDues')} />
       <ErrorText message={resource.error} />
@@ -219,6 +223,21 @@ function TransactionForm({
     return <ErrorText message="This entry is no longer editable. Go back and refresh the day." />;
   return (
     <>
+      <Text style={styles.small}>
+        Required fields are labelled. Explain corrections before saving.
+      </Text>
+      {entryId && (
+        <Field
+          required
+          minLength={2}
+          label="Correction reason"
+          value={reason}
+          onChangeText={setReason}
+          maxLength={500}
+          autoFocus
+          placeholder="e.g. Amount was entered incorrectly"
+        />
+      )}
       <FilterChips
         label="Transaction type"
         options={transactionTypes
@@ -251,6 +270,8 @@ function TransactionForm({
       <Card>
         {type === 'CREDIT_SALE' && (
           <Field
+            required
+            minLength={2}
             label="Customer name / bill reference"
             value={customer}
             onChangeText={setCustomer}
@@ -260,6 +281,7 @@ function TransactionForm({
         )}
         <MoneyField label="Amount (₹)" value={amount} onChange={setAmount} />
         <Field
+          required
           label="Description"
           value={description}
           onChangeText={setDescription}
@@ -274,14 +296,6 @@ function TransactionForm({
           placeholder="e.g. Shop expenses"
           maxLength={80}
         />
-        {entryId && (
-          <Field
-            label="Correction reason"
-            value={reason}
-            onChangeText={setReason}
-            maxLength={500}
-          />
-        )}
       </Card>
       <ErrorText message={action.error} />
       <Button
@@ -354,11 +368,13 @@ export function EntryCard({
   entry,
   zone,
   edit,
+  remove,
   footer,
 }: {
   entry: Entry;
   zone: string;
   edit?: () => void;
+  remove?: () => void;
   footer?: React.ReactNode;
 }) {
   return (
@@ -386,7 +402,12 @@ export function EntryCard({
         </Text>
       )}
       {entry.deleted_by && <Text style={styles.small}>Deleted by {entry.deleted_by.name}</Text>}
-      {edit && <Button title={`Edit · ${entry.description}`} secondary onPress={edit} />}
+      {(edit || remove) && (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+          {edit && <Button title={`Edit · ${entry.description}`} secondary onPress={edit} />}
+          {remove && <Button title={`Delete · ${entry.description}`} secondary onPress={remove} />}
+        </View>
+      )}
       {footer}
     </Card>
   );
@@ -450,37 +471,57 @@ export function HishobTransactions({
       <ErrorText message={resource.error || action.error} />
       {resource.loading && <Loading />}
       {deleting && (
-        <Card>
-          <Text style={styles.heading}>Delete {deleting.entry.description}?</Text>
-          <Text style={styles.small}>
-            The entry remains in the audit trail but is removed from totals.
-          </Text>
-          <Field label="Deletion reason" value={reason} onChangeText={setReason} maxLength={500} />
-          <Button
-            title="Confirm deletion"
-            danger
-            busy={action.busy}
-            disabled={reason.trim().length < 2}
-            onPress={() =>
-              void action.run(async () => {
-                await api(
-                  `/shops/${selected!.shop_id}/hishob/days/${route.params.dayId}/transactions/${deleting.entry.id}/delete`,
-                  { revision: deleting.revision, reason },
-                  'POST',
-                );
-                setDeleting(null);
-                setReason('');
-                await resource.refresh();
-              })
-            }
-          />
-          <Button
-            title="Cancel deletion"
-            secondary
-            disabled={action.busy}
-            onPress={() => setDeleting(null)}
-          />
-        </Card>
+        <Modal
+          visible
+          animationType="slide"
+          onRequestClose={() => {
+            if (!action.busy) setDeleting(null);
+          }}
+        >
+          <Page topInset>
+            <Card>
+              <Text style={styles.heading}>Delete {deleting.entry.description}?</Text>
+              <Text style={styles.small}>
+                The entry remains in the audit trail but is removed from totals.
+              </Text>
+              <Field
+                required
+                minLength={2}
+                label="Deletion reason"
+                autoFocus
+                placeholder="e.g. Duplicate entry"
+                value={reason}
+                onChangeText={setReason}
+                maxLength={500}
+              />
+              <ErrorText message={action.error} />
+              <Button
+                title="Confirm deletion"
+                danger
+                busy={action.busy}
+                disabled={reason.trim().length < 2}
+                onPress={() =>
+                  void action.run(async () => {
+                    await api(
+                      `/shops/${selected!.shop_id}/hishob/days/${route.params.dayId}/transactions/${deleting.entry.id}/delete`,
+                      { revision: deleting.revision, reason },
+                      'POST',
+                    );
+                    setDeleting(null);
+                    setReason('');
+                    await resource.refresh();
+                  })
+                }
+              />
+              <Button
+                title="Cancel deletion"
+                secondary
+                disabled={action.busy}
+                onPress={() => setDeleting(null)}
+              />
+            </Card>
+          </Page>
+        </Modal>
       )}
       {resource.data && entries.length === 0 && (
         <EmptyState
@@ -497,6 +538,14 @@ export function HishobTransactions({
           <EntryCard
             entry={entry}
             zone={selected!.shop.timezone}
+            remove={
+              editable && !entry.deleted && entry.type !== 'DUE_COLLECTION'
+                ? () => {
+                    setDeleting({ entry, revision: resource.data!.revision });
+                    setReason('');
+                  }
+                : undefined
+            }
             edit={
               editable && !entry.deleted && entry.type !== 'DUE_COLLECTION'
                 ? () =>
@@ -507,16 +556,6 @@ export function HishobTransactions({
                 : undefined
             }
           />
-          {editable && !entry.deleted && entry.type !== 'DUE_COLLECTION' && (
-            <Button
-              title={`Delete · ${entry.description}`}
-              secondary
-              onPress={() => {
-                setDeleting({ entry, revision: resource.data!.revision });
-                setReason('');
-              }}
-            />
-          )}
         </View>
       ))}
     </Page>
@@ -554,6 +593,8 @@ function ChangeOpening({ initial: loaded, done }: { initial: Day; done: () => Pr
     <Card>
       <MoneyField label="Updated opening cash" value={opening} onChange={setOpening} />
       <Field
+        required
+        minLength={2}
         label="Opening correction reason"
         value={reason}
         onChangeText={setReason}
@@ -702,6 +743,8 @@ export function HishobDetails({
                 carried openings on other days remain unchanged.
               </Text>
               <Field
+                required
+                minLength={2}
                 label="Reopening reason"
                 value={reason}
                 onChangeText={setReason}

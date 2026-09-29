@@ -1,3 +1,4 @@
+import { phoneError } from '../phone';
 import React, { useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -212,7 +213,7 @@ export function MobileLogin({ route }: NativeStackScreenProps<Routes, 'MobileLog
           <Button
             title="Continue"
             busy={action.busy}
-            disabled={mobile.length < 8}
+            disabled={!!phoneError(mobile)}
             onPress={() =>
               void action.run(async () => {
                 const result = await post<{ step: string }>('/auth/password/options', {
@@ -251,6 +252,8 @@ export function MobileLogin({ route }: NativeStackScreenProps<Routes, 'MobileLog
           <Card>
             {step === 'REGISTER' && (
               <Field
+                required
+                minLength={2}
                 label="Your name"
                 value={name}
                 onChangeText={setName}
@@ -259,6 +262,12 @@ export function MobileLogin({ route }: NativeStackScreenProps<Routes, 'MobileLog
               />
             )}
             <Field
+              required
+              error={
+                email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+                  ? 'Enter a valid email address.'
+                  : ''
+              }
               label="Email address"
               value={email}
               onChangeText={setEmail}
@@ -277,7 +286,10 @@ export function MobileLogin({ route }: NativeStackScreenProps<Routes, 'MobileLog
           <Button
             title="Send email code"
             busy={action.busy}
-            disabled={!email.includes('@') || (step === 'REGISTER' && name.trim().length < 2)}
+            disabled={
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+              (step === 'REGISTER' && name.trim().length < 2)
+            }
             onPress={() => void action.run(sendEmail)}
           />
         </>
@@ -294,6 +306,8 @@ export function MobileLogin({ route }: NativeStackScreenProps<Routes, 'MobileLog
           )}
           <Card>
             <Field
+              required
+              minLength={6}
               label="Email code"
               value={code}
               onChangeText={(v) => setCode(v.replace(/\D/g, ''))}
@@ -342,6 +356,8 @@ export function MobileLogin({ route }: NativeStackScreenProps<Routes, 'MobileLog
               below first. An authorised manager can help workers when the owner enables this.
             </Text>
             <Field
+              required
+              minLength={8}
               label="Setup code"
               value={code}
               onChangeText={setCode}

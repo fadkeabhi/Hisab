@@ -26,7 +26,7 @@ test('owner issues staff setup, approves forgotten password, and recovers by ema
   await owner.screenshot({ path: info.outputPath('staff-setup-code.png') });
   await login(worker, 'Worker', workerMobile);
   await expect(worker.getByText('Hello, Asha', { exact: true })).toBeVisible();
-  await worker.getByLabel('Account tab', { exact: true }).click();
+  await worker.getByRole('button', { name: 'Open account', exact: true }).click();
   await worker.getByRole('button', { name: 'Sign out', exact: true }).click();
   // A subsequent visit presents the password, not first-time setup.
   await worker.getByRole('button', { name: 'Continue as Worker', exact: true }).click();
@@ -46,7 +46,7 @@ test('owner issues staff setup, approves forgotten password, and recovers by ema
   await newPassword(worker, 'a new worker passphrase 77');
   await worker.getByRole('button', { name: 'Set password & sign in', exact: true }).click();
   await expect(worker.getByText('Hello, Asha', { exact: true })).toBeVisible();
-  await owner.getByLabel('Account tab', { exact: true }).click();
+  await owner.getByRole('button', { name: 'Open account', exact: true }).click();
   await owner.getByRole('button', { name: 'Sign out', exact: true }).click();
   await owner.getByRole('button', { name: 'Continue as Owner', exact: true }).click();
   await owner.getByRole('button', { name: 'Forgot password?', exact: true }).click();
