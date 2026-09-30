@@ -1,3 +1,4 @@
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
@@ -277,40 +278,35 @@ def test_password_change_and_rate_limit(client, setup_shop):
     )
 
 
-def test_smtp_email_provider_and_failed_delivery_cleanup(client, monkeypatch):
+def test_brevo_email_provider_and_failed_delivery_cleanup(client, monkeypatch):
     import re
 
     from app import email_provider
 
     settings = client.app.state.settings
-    settings.email_provider = "smtp"
-    settings.smtp_host = "smtp.example.com"
-    settings.smtp_from = "Hishob <hello@example.com>"
-    settings.smtp_username = "mailer"
-    settings.smtp_password = "smtp-secret"
+    settings.email_provider = "brevo"
+    settings.brevo_api_key = "test-api-key"
+    settings.brevo_sender_name = "Hishob"
+    settings.brevo_sender_email = "hello@example.com"
     sent = []
 
-    class SMTP:
-        def __init__(self, *args, **kwargs):
-            self.tls = False
-
+    class Response:
         def __enter__(self):
             return self
 
         def __exit__(self, *args):
             pass
 
-        def starttls(self, context):
-            assert context.check_hostname
-            self.tls = True
+        def read(self):
+            return b'{}'
 
-        def login(self, username, password):
-            assert self.tls and username == "mailer"
+    def send_request(request, timeout):
+        assert timeout == 15
+        assert request.get_header("Api-key") == "test-api-key"
+        sent.append(json.loads(request.data))
+        return Response()
 
-        def send_message(self, message):
-            sent.append(message)
-
-    monkeypatch.setattr(email_provider.smtplib, "SMTP", SMTP)
+    monkeypatch.setattr(email_provider, "urlopen", send_request)
     result = client.post(
         "/api/auth/owner/register/request",
         json={
@@ -321,8 +317,8 @@ def test_smtp_email_provider_and_failed_delivery_cleanup(client, monkeypatch):
         },
     )
     assert result.status_code == 200 and "dev_otp" not in result.json()
-    assert sent[0]["To"] == "smtp-test@example.com"
-    code = re.search(r"code is (\d{6})", sent[0].get_content()).group(1)
+    assert sent[0]["to"] == [{"email": "smtp-test@example.com"}]
+    code = re.search(r"code is (\d{6})", sent[0]["textContent"]).group(1)
     assert (
         client.post(
             "/api/auth/owner/register/confirm",
@@ -337,9 +333,9 @@ def test_smtp_email_provider_and_failed_delivery_cleanup(client, monkeypatch):
     )
 
     def fail(*args):
-        raise RuntimeError("SMTP unavailable")
+        raise RuntimeError("Brevo unavailable")
 
-    monkeypatch.setattr(email_provider.smtplib.SMTP, "send_message", fail)
+    monkeypatch.setattr(email_provider, "urlopen", fail)
     before = client.app.state.db.otp_challenges.count_documents({})
     result = client.post(
         "/api/auth/owner/register/request",

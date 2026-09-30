@@ -1,4 +1,5 @@
 import ast
+import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -153,19 +154,22 @@ def test_email_subject_body_and_otp(language, monkeypatch):
         _env_file=None,
         app_env="test",
         jwt_secret="test-secret-with-more-than-32-characters",
-        email_provider="smtp",
-        smtp_from="app@example.com",
-        smtp_host="localhost",
+        email_provider="brevo",
+        brevo_api_key="test-api-key",
+        brevo_sender_name="Hisab",
+        brevo_sender_email="app@example.com",
     )
-    smtp = MagicMock()
-    monkeypatch.setattr("app.email_provider.smtplib.SMTP", smtp)
+    response = MagicMock()
+    response.__enter__.return_value = response
+    request = MagicMock(return_value=response)
+    monkeypatch.setattr("app.email_provider.urlopen", request)
     send_email(settings, "recipient@example.com", "123456", language)
-    email = smtp.return_value.__enter__.return_value.send_message.call_args.args[0]
-    assert email["Subject"] == translate("Your Hishob verification code", language)
-    assert email["To"] == "recipient@example.com"
-    assert "123456" in email.get_content()
+    email = json.loads(request.call_args.args[0].data)
+    assert email["subject"] == translate("Your Hishob verification code", language)
+    assert email["to"] == [{"email": "recipient@example.com"}]
+    assert "123456" in email["textContent"]
     if language != "en":
-        assert "Your Hishob code" not in email.get_content()
+        assert "Your Hishob code" not in email["textContent"]
 
 
 def test_database_and_csrf_errors_are_localized(client):
