@@ -32,7 +32,16 @@ def test_owner_registration_verifies_email_and_never_returns_secrets(client):
     auth = {"Authorization": "Bearer " + result.json()["access_token"]}
     profile = client.get("/api/auth/me", headers=auth).json()["user"]
     assert profile["email_verified"] and profile["password_ready"]
-    assert set(profile) == {"id", "mobile", "name", "email", "password_ready", "email_verified"}
+    assert set(profile) == {
+        "id",
+        "mobile",
+        "name",
+        "email",
+        "password_ready",
+        "email_verified",
+        "language",
+    }
+    assert profile["language"] == "en"
     stored = client.app.state.db.users.find_one({})
     assert stored["password_hash"].startswith("$argon2id$") and PASSWORD not in stored["password_hash"]
     assert client.post("/api/auth/owner/register/confirm", json=body).status_code == 400

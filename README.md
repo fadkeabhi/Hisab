@@ -305,7 +305,7 @@ All paths below are prefixed with `/api`; all except the public login/onboarding
 | POST | `/auth/mobile-change/request` | Owner submits `{mobile, role: OWNER, password}`; send a code to the recovery email |
 | POST | `/auth/mobile-change/confirm` | Verify recovery-email `{challenge_id, code}`; update identity and return a replacement native token or web session cookie |
 | POST | `/auth/logout` | Revoke current session |
-| POST | `/shops` | Owner creates `{name, timezone}` |
+| POST | `/shops` | Owner creates `{name, timezone, language}`; language is the shop default (`en`, `hi` or `mr`) |
 | GET | `/shops/{shop_id}/team` | Owner/manager reads workers and managers, including inactive staff |
 | GET | `/shops/{shop_id}/workers` | Owner/authorised manager lists active and inactive workers |
 | POST | `/shops/{shop_id}/workers` | Owner/authorised manager adds `{name, mobile}` |

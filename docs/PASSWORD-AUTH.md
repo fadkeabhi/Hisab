@@ -77,7 +77,8 @@ Paths are prefixed with `/api`. Public endpoints still require the web-origin/cu
 | --- | --- |
 | `/auth/password/options` | `{mobile, role}`; returns PASSWORD, REGISTER, SETUP, OWNER_RECOVERY or OWNER_MIGRATION |
 | `/auth/password/login` | `{mobile, role, password}` |
-| `/auth/owner/register/request` | `{mobile, role: OWNER, name, email}`; email challenge |
+| `/auth/owner/register/request` | `{mobile, role: OWNER, name, email, language}`; email challenge; language is `en`, `hi` or `mr` |
+| `/auth/language` | `PATCH {language}` for any signed-in role; `null` clears the personal override and uses the active shop default |
 | `/auth/owner/register/confirm` | `{challenge_id, code, password, confirm_password}` |
 | `/auth/owner/recovery/request` | `{email}`; generic recovery challenge response |
 | `/auth/owner/recovery/confirm` | `{challenge_id, code, password, confirm_password}` |
