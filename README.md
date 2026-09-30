@@ -6,6 +6,8 @@ A working Expo / React Native / TypeScript app and FastAPI / MongoDB API for sho
 
 Choose **Count cash**, **Enter sales**, or **Use billing totals** in Account → Shop settings (or Hishob → Sales method → Change before opening a day). Expenses can be paid from cash or digitally. Closing records money removed for the bank/home and carries only cash kept in the galla into tomorrow. **History** shows monthly totals with recorded and estimated sales separated. See [methods, calculations, API changes and examples](docs/HISHOB-METHODS.md).
 
+For a missed date, the owner opens **Hishob → History → select date → Start missed day**, enters that date’s opening cash and a reason, then starts the register. Managers with Hishob access can fill it once opened. Dates before shop creation and future dates are unavailable. Closed dates still require owner reopening. Late entries retain their business date and actual recording time; later days keep their saved opening balances and should be reviewed after backfilling.
+
 Billing close now uses one grand-total form, with **I know the totals** selected by default. Record unpaid sales individually; their remaining amount appears automatically at closing. Open **Hishob → Customer dues** to search unpaid/paid bills, collect partial or full payments by cash or UPI/card, and review receipts. Cash collected against old dues enters the galla without becoming a new sale. See [customer dues and closing rules](docs/HISHOB-METHODS.md#customer-dues).
 
 ## Web / PWA pilot
@@ -169,7 +171,8 @@ Prefix every path below with `/api/shops/{shop_id}/hishob`. All routes require a
 | GET | `/monthly-summary?month=YYYY-MM` | Closed-day sales, recorded/estimated split, payment types, expenses, transfers and coverage counts |
 | GET | `/transactions?q=tea&type=EXPENSE` | Search entries; optional `from_date` + `to_date`, `entry_status=ACTIVE/ALL/DELETED`, `page`, `page_size` (1–100); returns items, count and active cash-in/out totals |
 | GET | `/today` | Today's record, date/timezone, suggested opening and permissions |
-| POST | `/days` | Create day; `{opening_cash?, date?, reason?}` |
+| GET | `/day-context?for_date=YYYY-MM-DD` | Selected date’s record and opening cash suggested from its preceding closed day |
+| POST | `/days` | Create day; `{opening_cash?, date?, reason?}`. Past dates require an owner and a reason. |
 | GET | `/days?from_date=YYYY-MM-DD&to_date=YYYY-MM-DD` | Date-filtered summaries |
 | GET | `/days/{day_id}` | Full breakdown, entries, snapshots and audit |
 | PATCH | `/days/{day_id}/opening` | `{revision, opening_cash, reason}` |

@@ -284,12 +284,14 @@ export function IconButton({
   onPress,
   disabled,
   danger = false,
+  compact = false,
 }: {
   name: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
   onPress: () => void;
   disabled?: boolean;
   danger?: boolean;
+  compact?: boolean;
 }) {
   return (
     <Pressable
@@ -299,18 +301,18 @@ export function IconButton({
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        minWidth: 48,
-        minHeight: 48,
-        padding: 12,
+        minWidth: compact ? 44 : 48,
+        minHeight: compact ? 44 : 48,
+        padding: compact ? 8 : 12,
         borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
         alignSelf: 'flex-start',
-        backgroundColor: colors.mint,
+        backgroundColor: compact ? 'transparent' : colors.mint,
         opacity: disabled ? 0.4 : pressed ? 0.65 : 1,
       })}
     >
-      <Ionicons name={name} size={23} color={danger ? colors.red : colors.green} />
+      <Ionicons name={name} size={compact ? 20 : 23} color={danger ? colors.red : colors.green} />
     </Pressable>
   );
 }

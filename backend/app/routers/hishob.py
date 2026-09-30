@@ -117,8 +117,19 @@ def save(db, day, revision):
 
 @router.get("/today")
 def today(shop_id: str, identity=Depends(current_identity), db=Depends(get_db)):
+    return day_context(shop_id, None, identity, db)
+
+
+@router.get("/day-context")
+def day_context(
+    shop_id: str,
+    for_date: Optional[date] = Query(default=None),
+    identity=Depends(current_identity),
+    db=Depends(get_db),
+):
     member, shop = access(db, shop_id, identity)
-    day = business_today(shop)
+    day = for_date or business_today(shop)
+    validate_business_date(shop, day)
     current = db.hishob_days.find_one({"shop_id": shop_id, "date": str(day)})
     previous = prior_closed(db, shop_id, day)
     return {
@@ -133,15 +144,24 @@ def today(shop_id: str, identity=Depends(current_identity), db=Depends(get_db)):
     }
 
 
-@router.post("/days", status_code=201)
-def create_day(shop_id: str, body: DayCreate, identity=Depends(current_identity), db=Depends(get_db)):
-    member, shop = access(db, shop_id, identity, "add_hishob_transactions")
-    target = body.date or business_today(shop)
+def validate_business_date(shop, target):
     if (
         target > business_today(shop)
         or target < shop["created_at"].astimezone(ZoneInfo(shop["timezone"])).date()
     ):
         raise HTTPException(422, "Choose a date between shop creation and today.")
+
+
+@router.post("/days", status_code=201)
+def create_day(shop_id: str, body: DayCreate, identity=Depends(current_identity), db=Depends(get_db)):
+    member, shop = access(db, shop_id, identity, "add_hishob_transactions")
+    target = body.date or business_today(shop)
+    validate_business_date(shop, target)
+    if target < business_today(shop):
+        if member["role"] != "OWNER":
+            raise HTTPException(403, "Ask the owner to open this missed day before adding entries.")
+        if len(body.reason) < 2:
+            raise HTTPException(422, "Add a reason for opening this missed day.")
     previous = prior_closed(db, shop_id, target)
     suggested = previous["actual_closing_cash"] if previous else None
     if body.opening_cash is None and suggested is None:

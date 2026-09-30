@@ -701,7 +701,9 @@ test('formatted cash inputs, calendar history and persistent detail-page tabs', 
   await page.screenshot({ path: testInfo.outputPath('calendar-hishob.png') });
   await page.getByRole('button', { name: 'Previous month', exact: true }).click();
   await expect(page.getByText('No Hishob days found', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /, Not started$/ }).first()).toBeVisible();
+  const beforeCreation = page.getByRole('button', { name: /, Before shop creation$/ }).first();
+  await expect(beforeCreation).toBeVisible();
+  await expect(beforeCreation).toBeDisabled();
   await page.getByRole('button', { name: 'Current month', exact: true }).click();
   await expect(todayCell).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next month', exact: true })).toBeDisabled();

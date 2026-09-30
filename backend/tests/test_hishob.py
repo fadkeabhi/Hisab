@@ -425,3 +425,63 @@ def test_transaction_search_filters_pagination_totals_and_literal_text(client, s
 def test_transaction_search_validates_filters(client, setup_shop, params):
     response = client.get(root(setup_shop) + "/transactions", headers=setup_shop[0], params=params)
     assert response.status_code == 422
+
+
+def test_owner_opens_missed_day_with_audit_and_manager_can_fill(client, setup_shop, monkeypatch):
+    owner, shop, _, worker = setup_shop
+    base = root(setup_shop)
+    first = create(client, setup_shop, "100")
+    closed = client.post(
+        base + f"/days/{first['id']}/close",
+        headers=owner,
+        json={"revision": first["revision"], "actual_closing_cash": "100"},
+    )
+    assert closed.status_code == 200
+    start = datetime.fromisoformat(first["date"] + "T12:00:00+00:00")
+    monkeypatch.setattr(hishob, "now", lambda: start + timedelta(days=2))
+    missed_date = str((start + timedelta(days=1)).date())
+    later = create(client, setup_shop, "100")
+    client.post(
+        f"/api/shops/{shop}/managers",
+        headers=owner,
+        json={"name": "Ravi", "mobile": "+919876543212"},
+    )
+    manager = login(client, "+919876543212", "MANAGER")
+    client.put(f"/api/shops/{shop}/settings", headers=owner, json={"manager_can_access_hishob": True})
+    context = client.get(base + "/day-context", headers=owner, params={"for_date": missed_date})
+    assert context.status_code == 200
+    assert context.json()["date"] == missed_date
+    assert context.json()["suggested_opening_cash"] == "100.00"
+    assert context.json()["previous_closed_date"] == first["date"]
+    assert context.json()["day"] is None
+    payload = {"date": missed_date, "opening_cash": "100", "reason": "Forgot to start"}
+    assert client.post(base + "/days", headers=manager, json=payload).status_code == 403
+    assert client.post(base + "/days", headers=worker, json=payload).status_code == 403
+    assert client.post(base + "/days", headers=owner, json={**payload, "reason": ""}).status_code == 422
+    response = client.post(base + "/days", headers=owner, json=payload)
+    assert response.status_code == 201, response.text
+    missed = response.json()
+    assert missed["audit"][0]["actor"]["role"] == "OWNER"
+    assert missed["audit"][0]["reason"] == "Forgot to start"
+    assert missed["created_at"][:10] > missed_date
+    assert client.post(base + "/days", headers=owner, json=payload).status_code == 409
+    missed = add(client, base, manager, missed, "CASH_SALE", "50")
+    assert missed["transactions"][0]["date"] == missed_date
+    assert missed["transactions"][0]["created_at"][:10] > missed_date
+    assert missed["transactions"][0]["created_by"]["role"] == "MANAGER"
+    assert (
+        client.post(
+            base + f"/days/{missed['id']}/close",
+            headers=owner,
+            json={"revision": missed["revision"], "actual_closing_cash": "150"},
+        ).status_code
+        == 200
+    )
+    assert client.get(base + f"/days/{later['id']}", headers=owner).json() == later
+    for invalid in [str((start - timedelta(days=1)).date()), str((start + timedelta(days=3)).date())]:
+        assert (
+            client.get(base + "/day-context", headers=owner, params={"for_date": invalid}).status_code == 422
+        )
+        assert (
+            client.post(base + "/days", headers=owner, json={**payload, "date": invalid}).status_code == 422
+        )

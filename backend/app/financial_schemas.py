@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date as BusinessDate
 from enum import Enum
 from typing import Literal, Optional
 
@@ -23,7 +23,7 @@ class TransactionType(str, Enum):
 
 
 class DayCreate(Input):
-    date: Optional[date] = None
+    date: Optional[BusinessDate] = None
     opening_cash: Optional[str] = Field(default=None, pattern=MONEY_PATTERN)
     reason: str = Field(default="", max_length=500)
 

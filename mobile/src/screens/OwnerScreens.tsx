@@ -566,6 +566,7 @@ function TeamList({ managersOnly = false }: { managersOnly?: boolean }) {
                 </View>
                 {canEdit && (
                   <IconButton
+                    compact
                     name="create-outline"
                     label={`Edit ${person.name}`}
                     onPress={() =>

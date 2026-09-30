@@ -170,6 +170,10 @@ export function CustomerDues({ navigation }: NativeStackScreenProps<Routes, 'Cus
             onPress={() => navigation.navigate('HishobToday')}
           />
         ))}
+      <Text style={styles.small}>
+        To mark a due as paid, choose Receive payment on the customer’s card, enter the amount,
+        choose Cash or UPI / card / bank, then confirm. Full payment moves it to Paid automatically.
+      </Text>
       <SearchField
         label="Search customer dues"
         placeholder="Customer name or description"

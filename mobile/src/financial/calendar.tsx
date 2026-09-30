@@ -11,13 +11,13 @@ export function monthRange(month: string) {
     to: `${month}-${new Date(Date.UTC(year, number, 0)).getUTCDate()}`,
   };
 }
-export function dateInZone(timezone: string) {
+export function dateInZone(timezone: string, instant = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(new Date());
+  }).formatToParts(instant);
   return ['year', 'month', 'day']
     .map((type) => parts.find((part) => part.type === type)!.value)
     .join('-');
@@ -28,6 +28,7 @@ export function hasDifference(day: DaySummary) {
 export function HishobCalendar({
   month,
   today,
+  earliest,
   days,
   selected,
   onSelect,
@@ -35,6 +36,7 @@ export function HishobCalendar({
 }: {
   month: string;
   today: string;
+  earliest?: string;
   days: DaySummary[];
   selected: string | null;
   onSelect: (date: string) => void;
@@ -74,6 +76,8 @@ export function HishobCalendar({
           const date = `${month}-${String(number).padStart(2, '0')}`;
           const record = records.get(date);
           const future = date > today;
+          const beforeShop = !!earliest && date < earliest;
+          const disabled = future || beforeShop;
           const matches = !record || status === 'ALL' || status === record.status;
           const color = record?.status === 'OPEN' ? '#A46C0B' : colors.green;
           return (
@@ -81,9 +85,9 @@ export function HishobCalendar({
               {number > 0 && number <= count && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Hishob ${date}, ${record ? (record.status === 'OPEN' ? 'Open' : 'Closed') : future ? 'Future date' : 'Not started'}${record && hasDifference(record) ? ', Cash difference' : ''}${date === today ? ', Today' : ''}`}
-                  accessibilityState={{ selected: selected === date, disabled: future }}
-                  disabled={future}
+                  accessibilityLabel={`Hishob ${date}, ${record ? (record.status === 'OPEN' ? 'Open' : 'Closed') : future ? 'Future date' : beforeShop ? 'Before shop creation' : 'Not started'}${record && hasDifference(record) ? ', Cash difference' : ''}${date === today ? ', Today' : ''}`}
+                  accessibilityState={{ selected: selected === date, disabled }}
+                  disabled={disabled}
                   onPress={() => onSelect(date)}
                   style={{
                     minHeight: 54,
@@ -103,7 +107,7 @@ export function HishobCalendar({
                         : selected === date
                           ? colors.green
                           : 'transparent',
-                    opacity: future || !matches ? 0.4 : 1,
+                    opacity: disabled || !matches ? 0.4 : 1,
                   }}
                 >
                   <Text

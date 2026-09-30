@@ -1,3 +1,4 @@
+import { dateInZone } from './calendar';
 import { Calculator } from './Calculator';
 import { HelpButton as Button, FinancialHelp } from './help';
 import React, { useState } from 'react';
@@ -14,6 +15,7 @@ import { Day, modeLabels } from './types';
 export function CloseForm({ initial: loaded, done }: { initial: Day; done: () => void }) {
   const [initial] = useState(loaded);
   const { api, selected } = useAuth();
+  const isToday = initial.date === dateInZone(initial.timezone);
   const mode = initial.mode || 'ENTRIES';
   const [actual, setActual] = useState(initial.counted_cash || '');
   const previousClosing = initial.closing_snapshots.at(-1);
@@ -127,7 +129,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
               ]}
             />
             <Text style={styles.small}>
-              Cash sales = billing total − UPI/card sales − today’s remaining unpaid sales.
+              Cash sales = billing total − UPI/card sales − this day’s remaining unpaid sales.
             </Text>
           </>
         )}
@@ -140,16 +142,18 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
               onChange={setDigital}
             />
             <Text style={styles.small}>
-              Include payments collected for today’s sales. Exclude collections of older dues and
+              Include payments collected for this day’s sales. Exclude collections of older dues and
               owner transfers. Enter 0 if none.
             </Text>
           </>
         )}
-        <Text style={styles.heading}>Today’s unpaid sales · {money(credit)}</Text>
+        <Text style={styles.heading}>
+          {isToday ? 'Today’s unpaid sales' : 'This day’s unpaid sales'} · {money(credit)}
+        </Text>
         <Text style={styles.small}>
-          Calculated from unpaid-sale transactions, less payments collected for them today. Older
-          customer dues are not part of today’s sales. To add or correct an unpaid sale, return to
-          the day before closing.
+          Calculated from unpaid-sale transactions, less payments collected for them on this date.
+          Older customer dues are not part of this day’s sales. To add or correct an unpaid sale,
+          return to the day before closing.
         </Text>
         {legacyCredit > BigInt(0) && (
           <Text style={styles.small}>
@@ -262,7 +266,7 @@ export function CloseForm({ initial: loaded, done }: { initial: Day; done: () =>
       />
       <ErrorText message={action.error} />
       <Button
-        title="Close today’s Hishob"
+        title={isToday ? 'Close today’s Hishob' : `Close Hishob · ${initial.date}`}
         busy={action.busy}
         validationMessage={
           badEstimate

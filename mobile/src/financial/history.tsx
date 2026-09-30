@@ -18,9 +18,38 @@ import {
   styles,
 } from '../components/ui';
 import { FilterChips } from '../components/ListControls';
-import { DaySummary, MonthlySummary } from './types';
+import { DaySummary, MonthlySummary, TodayHishob } from './types';
+import { NewDay } from './today';
 import { money } from './money';
 import { dateInZone, hasDifference, HishobCalendar, monthRange } from './calendar';
+
+function MissedDay({ date, onCreated }: { date: string; onCreated: (id: string) => void }) {
+  const { selected } = useAuth();
+  const resource = useResource<TodayHishob>(
+    `/shops/${selected!.shop_id}/hishob/day-context?for_date=${date}`,
+    true,
+  );
+  return (
+    <>
+      <ErrorText message={resource.error} />
+      {resource.loading && <Loading />}
+      {resource.data &&
+        (resource.data.day ? (
+          <Button
+            title={`Open Hishob · ${date}`}
+            onPress={() => onCreated(resource.data!.day!.id)}
+          />
+        ) : (
+          <NewDay
+            initial={resource.data}
+            missed
+            refresh={resource.refresh}
+            onCreated={(day) => onCreated(day.id)}
+          />
+        ))}
+    </>
+  );
+}
 
 function DayCard({ day, open }: { day: DaySummary; open: () => void }) {
   return (
@@ -52,11 +81,15 @@ function DayCard({ day, open }: { day: DaySummary; open: () => void }) {
 export function HishobHistory({ navigation }: NativeStackScreenProps<Routes, 'HishobHistory'>) {
   const { selected } = useAuth();
   const today = dateInZone(selected!.shop.timezone);
+  const earliest = selected!.shop.created_at
+    ? dateInZone(selected!.shop.timezone, new Date(selected!.shop.created_at!))
+    : undefined;
   const [month, setMonth] = useState(today.slice(0, 7));
   const [view, setView] = useState<'CALENDAR' | 'LIST'>('CALENDAR');
   const [from, setFrom] = useState(monthRange(month).from);
   const [to, setTo] = useState(monthRange(month).to);
   const [range, setRange] = useState({ from, to });
+  const [startingDate, setStartingDate] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [status, setStatus] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
   const dates = view === 'CALENDAR' ? monthRange(month) : range;
@@ -77,6 +110,7 @@ export function HishobHistory({ navigation }: NativeStackScreenProps<Routes, 'Hi
     (month === today.slice(0, 7) ? today : `${month}-01`);
   const day = allDays.find((item) => item.date === date);
   const changeMonth = (next: string) => {
+    setStartingDate(null);
     setMonth(next);
     setSelectedDate(null);
   };
@@ -207,9 +241,13 @@ export function HishobHistory({ navigation }: NativeStackScreenProps<Routes, 'Hi
               <HishobCalendar
                 month={month}
                 today={today}
+                earliest={earliest}
                 days={allDays}
                 selected={date}
-                onSelect={setSelectedDate}
+                onSelect={(next) => {
+                  setSelectedDate(next);
+                  setStartingDate(null);
+                }}
                 status={status}
               />
               {day && (status === 'ALL' || day.status === status) ? (
@@ -227,10 +265,37 @@ export function HishobHistory({ navigation }: NativeStackScreenProps<Routes, 'Hi
                   description={
                     day
                       ? 'Choose All days to see this day’s summary.'
-                      : 'No cash register was started on this date.'
+                      : earliest && date < earliest
+                        ? 'This date is before this shop was created.'
+                        : 'No cash register was started on this date.'
                   }
                 />
               )}
+              {!day &&
+                date < today &&
+                (!earliest || date >= earliest) &&
+                (selected!.permissions.reopen_hishob ? (
+                  startingDate === date ? (
+                    <MissedDay
+                      key={`${selected!.shop_id}:${date}`}
+                      date={date}
+                      onCreated={(dayId) => {
+                        setStartingDate(null);
+                        navigation.navigate('HishobDetails', { dayId });
+                      }}
+                    />
+                  ) : (
+                    <Button
+                      title={`Start missed day · ${date}`}
+                      onPress={() => setStartingDate(date)}
+                    />
+                  )
+                ) : (
+                  <Text style={styles.small}>
+                    Ask your owner to open this missed day. You can then add entries with Hishob
+                    access.
+                  </Text>
+                ))}
               {!day && date === today && (
                 <Button
                   title="Go to today’s Hishob"

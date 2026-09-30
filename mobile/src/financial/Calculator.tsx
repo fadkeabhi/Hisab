@@ -84,13 +84,30 @@ export function Calculator() {
                       onSubmitEditing={solve}
                     />
                     <Text style={styles.small}>Result · rounded to 8 decimal places</Text>
-                    <Text
-                      selectable
-                      accessibilityLabel="Calculator result"
-                      style={[styles.title, { fontVariant: ['tabular-nums'] }]}
-                    >
-                      {result || '—'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text
+                        selectable
+                        accessibilityLabel="Calculator result"
+                        style={[styles.title, { flex: 1, fontVariant: ['tabular-nums'] }]}
+                      >
+                        {result || '—'}
+                      </Text>
+                      <IconButton
+                        label="Copy result"
+                        name={message === 'Result copied.' ? 'checkmark-outline' : 'copy-outline'}
+                        compact
+                        disabled={!result}
+                        onPress={() => {
+                          void Clipboard.setStringAsync(result)
+                            .then((ok) =>
+                              setMessage(
+                                ok ? 'Result copied.' : 'Select and hold the result to copy it.',
+                              ),
+                            )
+                            .catch(() => setMessage('Select and hold the result to copy it.'));
+                        }}
+                      />
+                    </View>
                     {message === 'Result copied.' ? (
                       <Text accessibilityLiveRegion="polite" style={{ color: colors.green }}>
                         {message}
@@ -147,19 +164,6 @@ export function Calculator() {
                     × and ÷ are calculated first. % divides a number by 100; use 500 × 10% for ten
                     percent of 500.
                   </Text>
-                  <Button
-                    title="Copy result"
-                    disabled={!result}
-                    onPress={() => {
-                      void Clipboard.setStringAsync(result)
-                        .then((ok) =>
-                          setMessage(
-                            ok ? 'Result copied.' : 'Select and hold the result to copy it.',
-                          ),
-                        )
-                        .catch(() => setMessage('Select and hold the result to copy it.'));
-                    }}
-                  />
                 </View>
               </Page>
               <View

@@ -29,7 +29,13 @@ export type Permissions = {
 };
 
 export type Status = 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE' | 'NOT_MARKED';
-export type Shop = { id: string; name: string; timezone: string; settings: ShopSettings };
+export type Shop = {
+  id: string;
+  name: string;
+  timezone: string;
+  settings: ShopSettings;
+  created_at?: string;
+};
 export type Membership = {
   id: string;
   shop_id: string;

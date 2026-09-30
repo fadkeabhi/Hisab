@@ -23,11 +23,15 @@ import { FinancialHelp } from './help';
 import { money, parseMoney, signedPaise } from './money';
 import { Day, TodayHishob, transactionTypes, modeLabels } from './types';
 
-function NewDay({
+export function NewDay({
   initial,
   refresh,
   changeMethod,
+  onCreated,
+  missed = false,
 }: {
+  onCreated?: (day: Day) => void;
+  missed?: boolean;
   initial: TodayHishob;
   refresh: () => Promise<void>;
   changeMethod?: () => void;
@@ -49,8 +53,15 @@ function NewDay({
           <Ionicons name="wallet-outline" size={24} color="#F4CD72" />
         </View>
         <View style={{ flex: 1, gap: 5 }}>
-          <Text style={hishobStyles.startTitle}>Start your day</Text>
-          <Text style={hishobStyles.balanceNote}>A fresh Hishob for today.</Text>
+          <Text style={hishobStyles.startTitle}>
+            {missed ? 'Start missed day' : 'Start your day'}
+          </Text>
+          {missed && <Text style={hishobStyles.balanceNote}>{initial.date}</Text>}
+          <Text style={hishobStyles.balanceNote}>
+            {missed
+              ? 'Open this date so you or your manager can fill the missed entries.'
+              : 'A fresh Hishob for today.'}
+          </Text>
         </View>
       </View>
       <View style={hishobStyles.startForm}>
@@ -73,30 +84,40 @@ function NewDay({
             Enter the cash in your galla (₹). Starting with no cash? Enter 0.
           </Text>
         )}
-        {override && (
+        {(override || missed) && (
           <Field
             required
             minLength={2}
-            label="Opening change reason"
+            label={missed ? 'Reason for opening missed day' : 'Opening change reason'}
             value={reason}
             onChangeText={setReason}
             maxLength={500}
-            placeholder="Why is the opening different?"
+            placeholder={missed ? 'Why was this day missed?' : 'Why is the opening different?'}
           />
+        )}
+        {missed && (
+          <Text style={styles.small}>
+            Use the opening cash for this date. Entries keep their actual recording time. Existing
+            later days will keep their saved opening balances; review those balances after closing
+            this day.
+          </Text>
         )}
         <ErrorText message={action.error} />
         <PlainButton
-          title="Start today’s Hishob"
+          title={missed ? `Start Hishob · ${initial.date}` : 'Start today’s Hishob'}
           busy={action.busy}
-          disabled={parseMoney(opening) === null || (override && reason.trim().length < 2)}
+          disabled={
+            parseMoney(opening) === null || ((override || missed) && reason.trim().length < 2)
+          }
           onPress={() =>
             void action.run(async () => {
-              await api(
+              const created = await api<Day>(
                 `/shops/${selected!.shop_id}/hishob/days`,
-                { opening_cash: opening.trim(), reason },
+                { date: initial.date, opening_cash: opening.trim(), reason },
                 'POST',
               );
               await refresh();
+              onCreated?.(created);
             })
           }
         />
