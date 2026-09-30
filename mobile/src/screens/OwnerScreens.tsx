@@ -274,7 +274,7 @@ export function OwnerDashboard() {
           <Text style={styles.small}>{attendanceMessage}</Text>
         </View>
         <ErrorText message={resource.error} />
-        {resource.error && (
+        {!!resource.error && (
           <Button title="Retry attendance" secondary onPress={() => void resource.refresh()} />
         )}
         <Pressable
@@ -294,7 +294,7 @@ export function OwnerDashboard() {
       {selected!.permissions.view_hishob && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open cashbook"
+          accessibilityLabel="Open Hishob"
           onPress={() => navigation.navigate('Hishob', { screen: 'HishobToday' })}
           style={({ pressed }) => [homeStyles.cashbookCard, { opacity: pressed ? 0.75 : 1 }]}
         >
@@ -302,7 +302,7 @@ export function OwnerDashboard() {
             <Ionicons name="wallet-outline" size={24} color="#8B5A08" />
           </View>
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={styles.heading}>Cashbook</Text>
+            <Text style={styles.heading}>Hishob</Text>
             <Text style={styles.small}>Sales, expenses & daily closing</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.green} />
@@ -1034,7 +1034,7 @@ export function TodayAttendance() {
         </View>
       </View>
       <ErrorText message={resource.error} />
-      {resource.error && (
+      {!!resource.error && (
         <View style={{ gap: 8 }}>
           {resource.data && <Text style={styles.small}>Showing the last loaded attendance.</Text>}
           <Button title="Retry attendance" secondary onPress={() => void resource.refresh()} />

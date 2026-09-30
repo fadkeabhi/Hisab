@@ -7,7 +7,7 @@ test('Hishob explains transaction choices without changing entered amounts', asy
   await login(page, 'Owner', '+9191' + String(Date.now()).slice(-8));
   await page.getByRole('textbox', { name: 'Shop name', exact: true }).fill('Guided shop');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
-  await page.getByLabel('Cashbook tab', { exact: true }).click();
+  await page.getByLabel('Hishob tab', { exact: true }).click();
   await page.getByRole('button', { name: 'About Opening cash', exact: true }).click();
   await expect(page.getByText(/A past shortage is not deducted a second time/)).toBeVisible();
   await page.getByRole('textbox', { name: 'Opening cash', exact: true }).fill('1500');

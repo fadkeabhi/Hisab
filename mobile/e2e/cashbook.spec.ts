@@ -5,7 +5,7 @@ async function owner(page: Page) {
   await login(page, 'Owner', '+9198' + String(Date.now()).slice(-8));
   await page.getByRole('textbox', { name: 'Shop name', exact: true }).fill('Daily Hishob Shop');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
-  await page.getByLabel('Cashbook tab', { exact: true }).click();
+  await page.getByLabel('Hishob tab', { exact: true }).click();
 }
 async function method(page: Page, label: string) {
   await page.getByRole('button', { name: 'Choose Hishob method', exact: true }).click();
@@ -232,7 +232,7 @@ test('total-only billing saves unknown payment split and can later reconcile kno
 
 test('opening cash follows refreshed carry-forward without overwriting an owner edit', async ({
   page,
-}) => {
+}, info) => {
   let suggested = '5999.00';
   let reads = 0;
   await page.route('**/api/shops/*/hishob/today', async (route) => {
@@ -248,6 +248,12 @@ test('opening cash follows refreshed carry-forward without overwriting an owner 
   const opening = page.getByRole('textbox', { name: 'Opening cash', exact: true });
   const reason = page.getByRole('textbox', { name: 'Opening change reason', exact: true });
   await expect(opening).toHaveValue('5,999.00');
+  await page.setViewportSize({ width: 320, height: 740 });
+  await expect(page.getByText(/₹5,999 carried from/)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Start today’s Hishob', exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({ path: info.outputPath('hishob-carried-opening.png') });
   suggested = '1499.00';
   await expect(opening).toHaveValue('1,499.00');
   await expect(reason).toHaveCount(0);
@@ -262,6 +268,10 @@ test('opening cash follows refreshed carry-forward without overwriting an owner 
   await expect.poll(() => reads).toBeGreaterThan(previousReads);
   await expect(opening).toHaveValue('1,200');
   await expect(reason).toHaveValue('Counted opening cash');
+  await page
+    .getByRole('button', { name: 'Start today’s Hishob', exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath('hishob-opening-adjustment.png') });
 });
 
 test('customer dues collect partial cash and digital payments and feed billing close', async ({

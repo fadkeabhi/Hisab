@@ -4,6 +4,10 @@ import { login } from './auth-helpers';
 test('home shows daily progress, fits four clear tabs and recovers attendance errors', async ({
   page,
 }, info) => {
+  const textNodeErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.text().includes('Unexpected text node')) textNodeErrors.push(message.text());
+  });
   const suffix = String(Date.now()).slice(-8);
   await login(page, 'Owner', '+9195' + suffix);
   await page.getByLabel('Shop name', { exact: true }).fill('Market Road Store');
@@ -64,7 +68,7 @@ test('home shows daily progress, fits four clear tabs and recovers attendance er
     { width: 1280, height: 900 },
   ]) {
     await page.setViewportSize(viewport);
-    for (const label of ['Home', 'Attendance', 'Cashbook', 'Team']) {
+    for (const label of ['Home', 'Attendance', 'Hishob', 'Team']) {
       const tab = page.getByLabel(`${label} tab`, { exact: true });
       await expect(tab).toBeInViewport();
       const bounds = await tab.getByText(label, { exact: true }).boundingBox();
@@ -113,4 +117,5 @@ test('home shows daily progress, fits four clear tabs and recovers attendance er
   await expect(page.getByRole('tab')).toHaveCount(4);
   await page.getByLabel('Home tab', { exact: true }).click();
   await expect(page.getByText('Hello, Prajwal', { exact: true })).toBeVisible();
+  expect(textNodeErrors).toEqual([]);
 });

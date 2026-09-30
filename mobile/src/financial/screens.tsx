@@ -1,4 +1,3 @@
-import { Calculator } from './Calculator';
 import { InfoHelp } from '../components/InfoHelp';
 import { HelpButton as Button, FinancialHelp, financialHelp, transactionHelp } from './help';
 import React, { useState } from 'react';
@@ -20,166 +19,11 @@ import {
 import { FilterChips, SearchField } from '../components/ListControls';
 import { Routes } from '../types';
 import { Breakdown, Galla, MoneyField, timestamp, TransactionTypeFilter } from './components';
-import { money, parseMoney, signedPaise } from './money';
+import { money, parseMoney } from './money';
 import { CloseForm } from './closing';
-import { Day, Entry, TodayHishob, TransactionType, transactionTypes, modeLabels } from './types';
+import { Day, Entry, TransactionType, transactionTypes } from './types';
 export { HishobHistory } from './history';
-
-function NewDay({ initial, refresh }: { initial: TodayHishob; refresh: () => Promise<void> }) {
-  const { api, selected } = useAuth();
-  // Follow refreshed carry-forward cash until the owner explicitly edits it.
-  const [openingDraft, setOpening] = useState<string | null>(null);
-  const opening = openingDraft ?? initial.suggested_opening_cash ?? '';
-  const [reason, setReason] = useState('');
-  const action = useAction();
-  useUnsavedChanges(opening !== (initial.suggested_opening_cash || '') || !!reason);
-  const override =
-    initial.suggested_opening_cash !== null &&
-    parseMoney(opening) !== signedPaise(initial.suggested_opening_cash);
-  return (
-    <>
-      <Card>
-        <Text style={styles.heading}>{modeLabels[selected!.shop.settings.hishob_mode]}</Text>
-        <Text style={styles.small}>
-          Choose how sales are recorded in Account → Shop settings before starting. Record expenses
-          as they happen, then count and close.
-        </Text>
-      </Card>
-      <Card>
-        <Text style={styles.heading}>Start with the cash in your galla</Text>
-        <Text style={styles.subtitle}>
-          {initial.previous_closed_date
-            ? `Carried from the actual closing cash on ${initial.previous_closed_date}.`
-            : 'This is your first day. Count the cash you are starting with.'}
-        </Text>
-        <MoneyField label="Opening cash" value={opening} onChange={setOpening} />
-        {override && (
-          <Field
-            required
-            minLength={2}
-            label="Opening change reason"
-            value={reason}
-            onChangeText={setReason}
-            maxLength={500}
-            placeholder="Why is the opening different?"
-          />
-        )}
-      </Card>
-      <ErrorText message={action.error} />
-      <Button
-        title="Start today’s Hishob"
-        busy={action.busy}
-        disabled={parseMoney(opening) === null || (override && reason.trim().length < 2)}
-        onPress={() =>
-          void action.run(async () => {
-            await api(
-              `/shops/${selected!.shop_id}/hishob/days`,
-              { opening_cash: opening.trim(), reason },
-              'POST',
-            );
-            await refresh();
-          })
-        }
-      />
-    </>
-  );
-}
-
-export function HishobToday({ navigation }: NativeStackScreenProps<Routes, 'HishobToday'>) {
-  const { selected } = useAuth();
-  const resource = useResource<TodayHishob>(`/shops/${selected!.shop_id}/hishob/today`, true);
-  const day = resource.data?.day;
-  return (
-    <Page refresh={resource.refresh}>
-      <Heading
-        title="Today’s Hishob"
-        subtitle={`${selected!.shop.name} · ${resource.data?.date || 'Your daily cash register'}`}
-      />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View>
-          <Button
-            title="Search"
-            accessibilityLabel="Search transactions"
-            secondary
-            onPress={() => navigation.navigate('HishobSearch')}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            title="Calendar & sales"
-            accessibilityLabel="Hishob history"
-            secondary
-            onPress={() => navigation.navigate('HishobHistory')}
-          />
-        </View>
-        <Calculator />
-      </View>
-      <Button title="Customer dues" secondary onPress={() => navigation.navigate('CustomerDues')} />
-      <ErrorText message={resource.error} />
-      {resource.loading && <Loading />}
-      {!day && selected!.permissions.manage_settings && (
-        <Button
-          title="Choose Hishob method"
-          secondary
-          onPress={() => navigation.navigate('ShopSettings')}
-        />
-      )}
-      {resource.data && !day && (
-        <NewDay
-          key={`${selected!.shop_id}:${resource.data.date}`}
-          initial={resource.data}
-          refresh={resource.refresh}
-        />
-      )}
-      {day && (
-        <>
-          <Text style={styles.eyebrow}>
-            {day.status === 'CLOSED' ? 'DAY CLOSED' : 'DAY OPEN'} ·{' '}
-            {modeLabels[day.mode || 'ENTRIES']}
-          </Text>
-          <Galla
-            current={day.status === 'OPEN'}
-            expected={day.expected_closing_cash}
-            {...(day.status === 'CLOSED'
-              ? { actual: day.actual_closing_cash, difference: day.difference }
-              : {})}
-          />
-          {day.status === 'OPEN' && (
-            <Button
-              title="Add transaction"
-              onPress={() => navigation.navigate('HishobTransaction', { dayId: day.id })}
-            />
-          )}
-          {day.mode && day.mode !== 'ENTRIES' && day.status === 'OPEN' && (
-            <Text style={styles.subtitle}>
-              Record expenses and cash movements now.{' '}
-              {day.mode === 'COUNTED'
-                ? 'Cash sales will be estimated when you count at closing.'
-                : 'Enter your billing totals when you close the day.'}
-            </Text>
-          )}
-          <Breakdown day={day} />
-          <Button
-            title={`View transactions (${day.transactions.filter((entry) => !entry.deleted).length})`}
-            secondary
-            onPress={() => navigation.navigate('HishobTransactions', { dayId: day.id })}
-          />
-          {day.status === 'OPEN' && selected!.permissions.close_hishob && (
-            <Button
-              title="Close day"
-              onPress={() => navigation.navigate('HishobClose', { dayId: day.id })}
-            />
-          )}
-          <Button
-            title="Day details & audit"
-            secondary
-            onPress={() => navigation.navigate('HishobDetails', { dayId: day.id })}
-          />
-        </>
-      )}
-    </Page>
-  );
-}
+export { HishobToday } from './today';
 
 function TransactionForm({
   initial: loaded,
@@ -380,7 +224,9 @@ export function EntryCard({
   return (
     <Card>
       <View style={styles.row}>
-        <Text style={[styles.heading, { flex: 1 }]}>{entry.description}</Text>
+        <Text accessibilityRole="header" style={[styles.heading, { flex: 1 }]}>
+          {entry.description}
+        </Text>
         <Text style={styles.heading}>{money(entry.amount)}</Text>
       </View>
       <Text style={styles.small}>

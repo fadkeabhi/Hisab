@@ -20,7 +20,7 @@ async function start(page: Page) {
 }
 
 async function transaction(page: Page) {
-  await page.getByLabel('Cashbook tab', { exact: true }).click();
+  await page.getByLabel('Hishob tab', { exact: true }).click();
   await page.getByRole('textbox', { name: 'Opening cash', exact: true }).fill('1000');
   await page.getByRole('button', { name: 'Start today’s Hishob', exact: true }).click();
   await page.getByRole('button', { name: 'Add transaction', exact: true }).click();

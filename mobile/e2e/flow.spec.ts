@@ -61,7 +61,7 @@ test('owner-managed attendance, manager permissions, and worker monthly calendar
   await expect(owner.getByLabel('Attendance tab', { exact: true })).toBeVisible();
   await expect(owner.getByLabel('Team tab', { exact: true })).toBeVisible();
   await expect(owner.getByRole('button', { name: 'Open account', exact: true })).toBeVisible();
-  for (const label of ['Home', 'Attendance', 'Cashbook', 'Team']) {
+  for (const label of ['Home', 'Attendance', 'Hishob', 'Team']) {
     const bounds = await owner
       .getByLabel(`${label} tab`, { exact: true })
       .getByText(label, { exact: true })
@@ -476,13 +476,13 @@ test('daily Hishob closing, preserved history, corrections and manager permissio
   await back(owner);
   await login(manager, 'Manager', '+9194' + suffix);
   await expect(manager.getByText('Quick actions', { exact: true })).toBeVisible();
-  await expect(manager.getByRole('button', { name: 'Open cashbook', exact: true })).toHaveCount(0);
-  await expect(manager.getByLabel('Cashbook tab', { exact: true })).toHaveCount(0);
+  await expect(manager.getByRole('button', { name: 'Open Hishob', exact: true })).toHaveCount(0);
+  await expect(manager.getByLabel('Hishob tab', { exact: true })).toHaveCount(0);
   await login(worker, 'Worker', '+9195' + suffix);
   await expect(worker.getByText('Hello, Asha', { exact: true })).toBeVisible();
-  await expect(worker.getByRole('button', { name: 'Open cashbook', exact: true })).toHaveCount(0);
-  await expect(worker.getByLabel('Cashbook tab', { exact: true })).toHaveCount(0);
-  await owner.getByRole('button', { name: 'Open cashbook', exact: true }).click();
+  await expect(worker.getByRole('button', { name: 'Open Hishob', exact: true })).toHaveCount(0);
+  await expect(worker.getByLabel('Hishob tab', { exact: true })).toHaveCount(0);
+  await owner.getByRole('button', { name: 'Open Hishob', exact: true }).click();
   await owner.getByRole('textbox', { name: 'Opening cash', exact: true }).fill('0');
   await owner.getByRole('button', { name: 'Start today’s Hishob', exact: true }).click();
   await cashEntry(owner, 'Cash sales', '15000', 'Daily cash sales');
@@ -546,9 +546,9 @@ test('daily Hishob closing, preserved history, corrections and manager permissio
   await owner.getByRole('button', { name: 'Shop settings', exact: true }).click();
   await owner.getByRole('switch', { name: 'Managers can access Hishob', exact: true }).click();
   await owner.getByRole('button', { name: 'Save shop settings', exact: true }).click();
-  await manager.getByRole('button', { name: 'Open cashbook', exact: true }).click();
+  await manager.getByRole('button', { name: 'Open Hishob', exact: true }).click();
   await expect(manager.getByRole('button', { name: 'Close day', exact: true })).toHaveCount(0);
-  await expect(manager.getByLabel('Cashbook tab', { exact: true })).toBeVisible();
+  await expect(manager.getByLabel('Hishob tab', { exact: true })).toBeVisible();
   await expect(manager.getByRole('tab')).toHaveCount(4);
   await tab(manager, 'Account');
   await manager.getByRole('button', { name: 'My attendance', exact: true }).click();
@@ -558,7 +558,7 @@ test('daily Hishob closing, preserved history, corrections and manager permissio
       { exact: true },
     ),
   ).toBeVisible();
-  await tab(manager, 'Cashbook');
+  await tab(manager, 'Hishob');
   await cashEntry(manager, 'Other cash in', '50', 'Extra float');
   await owner.getByRole('switch', { name: 'Managers can close Hishob', exact: true }).click();
   await owner.getByRole('button', { name: 'Save shop settings', exact: true }).click();
@@ -610,7 +610,7 @@ test('formatted cash inputs, calendar history and persistent detail-page tabs', 
   await login(page, 'Owner', '+9191' + String(Date.now()).slice(-8));
   await page.getByRole('textbox', { name: 'Shop name', exact: true }).fill('Calendar Store');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
-  await page.getByRole('button', { name: 'Open cashbook', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Hishob', exact: true }).click();
   const opening = page.getByRole('textbox', { name: 'Opening cash', exact: true });
   await opening.pressSequentially('125000.50');
   await expect(opening).toHaveValue('1,25,000.50');
@@ -651,7 +651,7 @@ test('formatted cash inputs, calendar history and persistent detail-page tabs', 
   await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Counter sales');
   await tab(page, 'Team');
   await expect(page.getByText('Your team', { exact: true })).toBeVisible();
-  await tab(page, 'Cashbook');
+  await tab(page, 'Hishob');
   await expect(amount).toHaveValue('1,234.50');
   await expect(page.getByRole('textbox', { name: 'Description', exact: true })).toHaveValue(
     'Counter sales',
@@ -710,7 +710,7 @@ test('formatted cash inputs, calendar history and persistent detail-page tabs', 
   await tab(page, 'Home');
   // Re-selecting the active tab returns to its main page.
   await tab(page, 'Home');
-  await expect(page.getByRole('button', { name: 'Open cashbook', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Hishob', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -720,8 +720,8 @@ test('Hishob tab searches transactions by text, type and dates', async ({ page }
   await login(page, 'Owner', '+9190' + String(Date.now()).slice(-8));
   await page.getByRole('textbox', { name: 'Shop name', exact: true }).fill('Search Store');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
-  await tab(page, 'Cashbook');
-  await expect(page.getByLabel('Cashbook tab', { exact: true })).toHaveAttribute(
+  await tab(page, 'Hishob');
+  await expect(page.getByLabel('Hishob tab', { exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -736,8 +736,8 @@ test('Hishob tab searches transactions by text, type and dates', async ({ page }
   const search = page.getByRole('textbox', { name: 'Search transactions', exact: true });
   await search.fill('FUEL');
   await expect(page.getByText('1 matching transaction', { exact: true })).toBeVisible();
-  await expect(page.getByText('Fuel delivery', { exact: true })).toBeVisible();
-  await expect(page.getByText('Staff tea', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Fuel delivery', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Staff tea', exact: true })).toHaveCount(0);
   await search.fill('Prajwal');
   await expect(page.getByText('3 matching transactions', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Clear search transactions', exact: true }).click();
@@ -766,16 +766,16 @@ test('Hishob tab searches transactions by text, type and dates', async ({ page }
   await page.getByRole('button', { name: 'Search entries: Deleted only', exact: true }).click();
   await expect(page.getByText('No matching transactions', { exact: true })).toBeVisible();
   await tab(page, 'Home');
-  await tab(page, 'Cashbook');
+  await tab(page, 'Hishob');
   await expect(
     page.getByRole('textbox', { name: 'Search transactions', exact: true }),
   ).toBeVisible();
-  await tab(page, 'Cashbook');
+  await tab(page, 'Hishob');
   await page.getByRole('button', { name: 'View transactions (3)', exact: true }).click();
   await page
     .getByRole('textbox', { name: 'Search this day’s transactions', exact: true })
     .fill('tea');
-  await expect(page.getByText('Staff tea', { exact: true })).toBeVisible();
-  await expect(page.getByText('Fuel delivery', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Staff tea', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fuel delivery', exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });

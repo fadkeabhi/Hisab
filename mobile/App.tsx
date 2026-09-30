@@ -190,7 +190,7 @@ function MainTabs() {
           paddingBottom: Math.max(8, insets.bottom),
           height: 78 + insets.bottom,
         },
-        tabBarAccessibilityLabel: `${route.name === 'Hishob' ? 'Cashbook' : route.name === 'Dashboard' ? 'Home' : route.name === 'TodayAttendance' ? 'Attendance' : route.name === 'Workers' ? 'Team' : route.name === 'MyAttendance' ? (worker ? 'Attendance' : 'My day') : 'Account'} tab`,
+        tabBarAccessibilityLabel: `${route.name === 'Hishob' ? 'Hishob' : route.name === 'Dashboard' ? 'Home' : route.name === 'TodayAttendance' ? 'Attendance' : route.name === 'Workers' ? 'Team' : route.name === 'MyAttendance' ? (worker ? 'Attendance' : 'My day') : 'Account'} tab`,
         tabBarIcon: ({ focused, color }) => (
           <View
             style={{
@@ -228,7 +228,7 @@ function MainTabs() {
         />
       )}
       {finance && (
-        <Tabs.Screen name="Hishob" component={HishobStack} options={{ title: 'Cashbook' }} />
+        <Tabs.Screen name="Hishob" component={HishobStack} options={{ title: 'Hishob' }} />
       )}
       {!worker && <Tabs.Screen name="Workers" component={TeamStack} options={{ title: 'Team' }} />}
       {/* Account keeps its own history and drafts, but is opened from the header. */}

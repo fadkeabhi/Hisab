@@ -35,7 +35,7 @@ test('required fields focus, correction sheet, blank optional transfers and calc
   await expect(page.getByLabel('Shop name', { exact: true })).toBeFocused();
   await page.getByLabel('Shop name', { exact: true }).fill('Usability shop');
   await page.getByRole('button', { name: 'Create shop', exact: true }).click();
-  await page.getByLabel('Cashbook tab', { exact: true }).click();
+  await page.getByLabel('Hishob tab', { exact: true }).click();
   await page.getByRole('button', { name: 'Calculator', exact: true }).click();
   await page.getByLabel('Calculation', { exact: true }).fill('0.1+0.2');
   await page.getByRole('button', { name: 'Calculate result', exact: true }).click();

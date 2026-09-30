@@ -4,7 +4,7 @@ A working Expo / React Native / TypeScript app and FastAPI / MongoDB API for sho
 
 ## Flexible daily Hishob
 
-Choose **Count cash**, **Enter sales**, or **Use billing totals** in Account → Shop settings (or Hishob → Choose Hishob method before opening a day). Expenses can be paid from cash or digitally. Closing records money removed for the bank/home and carries only cash kept in the galla into tomorrow. **Calendar & sales** shows monthly totals with recorded and estimated sales separated. See [methods, calculations, API changes and examples](docs/HISHOB-METHODS.md).
+Choose **Count cash**, **Enter sales**, or **Use billing totals** in Account → Shop settings (or Hishob → Sales method → Change before opening a day). Expenses can be paid from cash or digitally. Closing records money removed for the bank/home and carries only cash kept in the galla into tomorrow. **History** shows monthly totals with recorded and estimated sales separated. See [methods, calculations, API changes and examples](docs/HISHOB-METHODS.md).
 
 Billing close now uses one grand-total form, with **I know the totals** selected by default. Record unpaid sales individually; their remaining amount appears automatically at closing. Open **Hishob → Customer dues** to search unpaid/paid bills, collect partial or full payments by cash or UPI/card, and review receipts. Cash collected against old dues enters the galla without becoming a new sale. See [customer dues and closing rules](docs/HISHOB-METHODS.md#customer-dues).
 
@@ -88,8 +88,8 @@ Workers never mark or edit attendance. The self-check-in/out endpoints accept on
 
 Bottom navigation follows each role:
 
-- **Owner:** Home, Attendance, Cashbook, Team. Team lists workers and managers together; manage managers from Team or Account. Shop settings are available from Home or Account.
-- **Manager:** Home, Attendance, Team, plus Cashbook when financial access is enabled. Personal attendance actions and the monthly calendar are available from Home and Account.
+- **Owner:** Home, Attendance, Hishob, Team. Team lists workers and managers together; manage managers from Team or Account. Shop settings are available from Home or Account.
+- **Manager:** Home, Attendance, Team, plus Hishob when financial access is enabled. Personal attendance actions and the monthly calendar are available from Home and Account.
 - **Worker:** Home and Attendance. Attendance remains read-only.
 
 **Account** is available from the header on main and detail pages. It keeps its own navigation history, so opening it does not replace an unfinished form in another section.
@@ -108,7 +108,9 @@ The mobile number field includes a searchable country-code picker (India +91 by 
 
 ## Phase 2 — Daily Hishob
 
-Open the **Cashbook** bottom tab for today’s cash register, transaction search and the monthly calendar. Home and Account shortcuts also open this tab. It is visible to owners and managers with financial access; workers cannot access it. For managers with financial access, personal attendance is available from Home and Account, keeping the bottom bar to four tabs.
+Open the **Hishob** bottom tab for today’s cash register, transaction search and the monthly calendar. Home and Account shortcuts also open this tab. It is visible to owners and managers with financial access; workers cannot access it. For managers with financial access, personal attendance is available from Home and Account, keeping the bottom bar to four tabs.
+
+Hishob puts the current galla and daily actions first. History, search and customer dues are grouped below them; the calculator stays in the heading. Sales and expenses have a short summary, **Cash breakdown** expands the full calculation, and **Recent entries** shows the latest three active transactions. A closed day highlights cash retained for the next day and any recorded difference. Unknown balances and uncheckable differences are labelled explicitly.
 
 Amount fields show Indian comma grouping as you type (for example `1,25,000.50`), including opening cash, transactions, corrections and closing cash. API values remain plain decimal strings.
 
@@ -181,7 +183,7 @@ The existing `/settings` and `/auth/me` responses include `hishob_mode`, the fin
 
 ### Test Phase 2 manually
 
-1. Register/sign in as Owner (development email verification code `123456`) and create a fresh shop. Open **Cashbook** from Home.
+1. Register/sign in as Owner (development email verification code `123456`) and create a fresh shop. Open **Hishob** from Home.
 2. Enter opening cash **0** and start the day.
 3. Add **Cash sales ₹15,000**, **Expense ₹500** (Transport), and **Bank deposit ₹2,000**. Current Galla is **₹12,500**; at closing this becomes the expected cash for comparison with your count.
 4. Open **Close day**, enter **₹12,300** actual cash. Difference is **-₹200**. Choose **Cash shortage**, then close.
