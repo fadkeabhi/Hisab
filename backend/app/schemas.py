@@ -1,5 +1,6 @@
 from datetime import date
 from enum import Enum
+from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import phonenumbers
@@ -111,3 +112,7 @@ class ShopSettings(Input):
     workers_can_view_attendance: bool = True
     manager_can_access_hishob: bool = False
     manager_can_close_hishob: bool = False
+
+
+class ShopSettingsUpdate(ShopSettings):
+    shop_name: Optional[str] = Field(default=None, min_length=2, max_length=100)

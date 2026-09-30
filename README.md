@@ -2,6 +2,10 @@
 
 A working Expo / React Native / TypeScript app and FastAPI / MongoDB API for shop onboarding, Owner/Manager/Worker access, mobile-and-password login, owner-managed attendance, and a daily cash register with audited closing. Billing, GST, inventory, payroll and AI features are outside this phase.
 
+## Shop settings
+
+Owners can rename the shop, choose sales and attendance methods, and manage team permissions from **Account → Shop settings**. Controls are grouped by Hishob, attendance and team administration. Save and Discard stay visible while scrolling; Discard restores the latest saved values. Renaming and permission changes save together. Business timezone is shown for reference. Manager closing is available only with Hishob access.
+
 ## Flexible daily Hishob
 
 Choose **Count cash**, **Enter sales**, or **Use billing totals** in Account → Shop settings (or Hishob → Sales method → Change before opening a day). Expenses can be paid from cash or digitally. Closing records money removed for the bank/home and carries only cash kept in the galla into tomorrow. **History** shows monthly totals with recorded and estimated sales separated. See [methods, calculations, API changes and examples](docs/HISHOB-METHODS.md).

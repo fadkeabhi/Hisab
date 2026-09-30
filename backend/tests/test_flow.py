@@ -458,3 +458,33 @@ def test_team_directory_includes_both_roles_and_preserves_access_rules(client, s
     assert any(p["role"] == "MANAGER" for p in client.get(base + "/team", headers=manager).json())
     client.app.state.db.memberships.update_one({"_id": manager_id}, {"$set": {"active": False}})
     assert client.get(base + "/team", headers=manager).status_code == 403
+
+
+def test_shop_settings_rename_is_atomic_validated_and_owner_only(client, setup_shop):
+    owner, shop, _, worker = setup_shop
+    base = f"/api/shops/{shop}"
+    _, manager = manager_login(client, setup_shop)
+    original = client.app.state.db.shops.find_one({"_id": shop})
+    settings = client.get(base + "/settings", headers=owner).json()
+    payload = {**settings, "shop_name": "  Market Road Store  ", "hishob_mode": "COUNTED"}
+    for auth in [worker, manager, login(client, "+919876543299")]:
+        assert client.put(base + "/settings", headers=auth, json=payload).status_code == 403
+    for name in [" ", "X", "a" * 101]:
+        assert (
+            client.put(base + "/settings", headers=owner, json={**payload, "shop_name": name}).status_code
+            == 422
+        )
+        assert client.app.state.db.shops.find_one({"_id": shop}) == original
+    response = client.put(base + "/settings", headers=owner, json=payload)
+    assert response.status_code == 200, response.text
+    assert response.json() == {**settings, "hishob_mode": "COUNTED"}
+    saved = client.app.state.db.shops.find_one({"_id": shop})
+    assert saved["name"] == "Market Road Store"
+    assert saved["timezone"] == original["timezone"]
+    assert saved["settings"] == response.json()
+    assert saved["updated_by"] == original["created_by"]
+    memberships = client.get("/api/auth/me", headers=owner).json()["memberships"]
+    assert next(m for m in memberships if m["shop_id"] == shop)["shop"]["name"] == "Market Road Store"
+    # Older clients can still save settings without sending a name.
+    assert client.put(base + "/settings", headers=owner, json=settings).status_code == 200
+    assert client.app.state.db.shops.find_one({"_id": shop})["name"] == "Market Road Store"

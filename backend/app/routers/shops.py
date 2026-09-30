@@ -3,7 +3,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from ..db import get_db, new_id, now
-from ..schemas import ShopCreate, ShopSettings, WorkerCreate, WorkerUpdate
+from ..schemas import ShopCreate, ShopSettings, ShopSettingsUpdate, WorkerCreate, WorkerUpdate
 from ..security import current_identity, require_owner, shop_access, worker_in_shop
 from ..shop_policy import require_permission, settings_for, shop_view
 
@@ -134,20 +134,19 @@ def get_shop_settings(shop_id: str, identity=Depends(current_identity), db=Depen
 
 @router.put("/{shop_id}/settings")
 def update_shop_settings(
-    shop_id: str, body: ShopSettings, identity=Depends(current_identity), db=Depends(get_db)
+    shop_id: str, body: ShopSettingsUpdate, identity=Depends(current_identity), db=Depends(get_db)
 ):
     shop_access(shop_id, db, identity, {"OWNER"})
-    db.shops.update_one(
-        {"_id": shop_id},
-        {
-            "$set": {
-                "settings": body.model_dump(mode="json"),
-                "updated_at": now(),
-                "updated_by": identity.user["_id"],
-            }
-        },
-    )
-    return body
+    settings = body.model_dump(mode="json", exclude={"shop_name"})
+    changes = {
+        "settings": settings,
+        "updated_at": now(),
+        "updated_by": identity.user["_id"],
+    }
+    if body.shop_name is not None:
+        changes["name"] = body.shop_name
+    db.shops.update_one({"_id": shop_id}, {"$set": changes})
+    return settings
 
 
 @router.get("/{shop_id}/managers")

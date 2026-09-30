@@ -62,6 +62,45 @@ test('home shows daily progress, fits four clear tabs and recovers attendance er
   await expect(page.getByRole('button', { name: 'Open attendance', exact: true })).toContainText(
     'Mark attendance',
   );
+  const home = () => page.getByLabel('Home tab', { exact: true }).click();
+  const shortcut = (label: string) =>
+    page.getByRole('button', { name: `View attendance: ${label}`, exact: true });
+  const filter = (label: string, count: number) =>
+    page.getByRole('button', { name: `Attendance filter: ${label}, ${count}`, exact: true });
+  for (const label of ['Team members', 'Present', 'Not marked']) {
+    const bounds = await shortcut(label).boundingBox();
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+  }
+  await shortcut('Present').click();
+  await expect(filter('Present', 1)).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('Present · 1', { exact: true })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Search register', exact: true }).fill('Nobody');
+  await page.getByRole('button', { name: 'Previous day', exact: true }).click();
+  await home();
+  await shortcut('Present').click();
+  await expect(filter('Present', 1)).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('textbox', { name: 'Search register', exact: true })).toHaveValue('');
+  await expect(page.getByRole('button', { name: 'Back to today', exact: true })).toHaveCount(0);
+  await home();
+  await shortcut('Not marked').click();
+  await expect(filter('Not marked', 1)).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('Not marked · 1', { exact: true })).toBeVisible();
+  await home();
+  await shortcut('Team members').click();
+  await expect(filter('Everyone', 2)).toHaveAttribute('aria-selected', 'true');
+  await home();
+  await page.getByRole('button', { name: 'Open attendance calendar', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Hide attendance calendar', exact: true }),
+  ).toHaveAttribute('aria-expanded', 'true');
+  await page.getByRole('button', { name: 'Previous day', exact: true }).click();
+  await home();
+  await page.getByRole('button', { name: 'Open attendance', exact: true }).click();
+  await expect(filter('Everyone', 2)).toHaveAttribute('aria-selected', 'true');
+  await expect(
+    page.getByRole('button', { name: 'Choose attendance date', exact: true }),
+  ).toHaveAttribute('aria-expanded', 'false');
+  await home();
   for (const viewport of [
     { width: 320, height: 740 },
     { width: 390, height: 844 },

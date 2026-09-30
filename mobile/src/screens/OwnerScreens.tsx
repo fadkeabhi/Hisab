@@ -27,7 +27,7 @@ import {
   statusLabel,
 } from '../components/ui';
 import { useAction, useResource } from '../hooks';
-import { OwnerToday, Routes, Shop, Status, Worker } from '../types';
+import { AttendanceEntry, OwnerToday, Routes, Shop, Status, Worker } from '../types';
 import { matchesPerson, SearchField } from '../components/ListControls';
 import { PhoneField } from '../components/PhoneField';
 
@@ -161,6 +161,11 @@ export function OwnerDashboard() {
     ?.trim()
     .split(/\s+/)[0];
   const date = resource.data?.date || dateInZone(shop.timezone);
+  const openAttendance = (status: 'ALL' | Status = 'ALL', openCalendar = false) =>
+    navigation.navigate('TodayAttendance', {
+      screen: 'TodayAttendanceRoot',
+      params: { status, openCalendar, requestId: Date.now().toString() },
+    });
   const attendanceMessage = resource.error
     ? resource.data
       ? 'Couldn’t refresh. Counts show the last loaded attendance.'
@@ -234,15 +239,30 @@ export function OwnerDashboard() {
       <View style={homeStyles.attendanceCard}>
         <View style={styles.row}>
           <Text style={styles.heading}>Today’s attendance</Text>
-          <Ionicons name="calendar-outline" size={22} color={colors.green} />
+          <IconButton
+            compact
+            name="calendar-outline"
+            label="Open attendance calendar"
+            onPress={() => openAttendance('ALL', true)}
+          />
         </View>
         <View style={homeStyles.stats}>
           {[
-            { label: 'Team members', value: rows.length },
-            { label: 'Present', value: present },
-            { label: 'Not marked', value: pending },
-          ].map(({ label, value }, index) => (
-            <View key={label} style={[homeStyles.stat, index > 0 && homeStyles.statDivider]}>
+            { label: 'Team members', value: rows.length, filter: 'ALL' as const },
+            { label: 'Present', value: present, filter: 'PRESENT' as const },
+            { label: 'Not marked', value: pending, filter: 'NOT_MARKED' as const },
+          ].map(({ label, value, filter }, index) => (
+            <Pressable
+              key={label}
+              accessibilityRole="button"
+              accessibilityLabel={`View attendance: ${label}`}
+              onPress={() => openAttendance(filter)}
+              style={({ pressed }) => [
+                homeStyles.stat,
+                index > 0 && homeStyles.statDivider,
+                { opacity: pressed ? 0.65 : 1 },
+              ]}
+            >
               <Text
                 style={[
                   homeStyles.statValue,
@@ -252,7 +272,7 @@ export function OwnerDashboard() {
                 {resource.data ? value : '—'}
               </Text>
               <Text style={homeStyles.statLabel}>{label}</Text>
-            </View>
+            </Pressable>
           ))}
         </View>
         <View style={{ gap: 9 }}>
@@ -280,7 +300,7 @@ export function OwnerDashboard() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open attendance"
-          onPress={() => navigation.navigate('TodayAttendance')}
+          onPress={() => openAttendance()}
           style={({ pressed }) => [homeStyles.primaryAction, { opacity: pressed ? 0.75 : 1 }]}
         >
           <Text style={{ color: colors.white, fontSize: 15, fontWeight: '700' }}>
@@ -339,7 +359,7 @@ const homeStyles = StyleSheet.create({
     gap: 12,
   },
   stats: { flexDirection: 'row', paddingVertical: 4 },
-  stat: { flex: 1, gap: 5, alignItems: 'center' },
+  stat: { flex: 1, gap: 5, minHeight: 48, justifyContent: 'center', alignItems: 'center' },
   statDivider: { borderLeftWidth: 1, borderLeftColor: colors.line },
   statValue: { fontSize: 32, fontWeight: '700', color: colors.ink, letterSpacing: -0.8 },
   statLabel: { fontSize: 12, lineHeight: 18, color: colors.muted, textAlign: 'center' },
@@ -866,16 +886,24 @@ const registerFilters: { value: 'ALL' | Status; label: string }[] = [
   { value: 'HALF_DAY', label: 'Half day' },
   { value: 'LEAVE', label: 'Leave' },
 ];
-export function TodayAttendance() {
+export function TodayAttendance({ route }: NativeStackScreenProps<Routes, 'TodayAttendanceRoot'>) {
+  // Each Home shortcut starts a fresh register view; ordinary tab switches preserve it.
+  return <AttendanceRegister key={route.params?.requestId ?? 'register'} {...route.params} />;
+}
+
+function AttendanceRegister({
+  status: initialStatus = 'ALL',
+  openCalendar = false,
+}: AttendanceEntry) {
   const { selected } = useAuth();
   const today = dateInZone(selected!.shop.timezone);
   const [chosenDate, setChosenDate] = useState<string | null>(null);
   const date = chosenDate || today;
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(openCalendar);
   const [helpOpen, setHelpOpen] = useState(false);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<'ALL' | Status>('ALL');
+  const [status, setStatus] = useState<'ALL' | Status>(initialStatus);
   const resource = useResource<OwnerToday>(
     `/shops/${selected!.shop_id}/attendance/${chosenDate ? `register?day=${chosenDate}` : 'today'}`,
     true,

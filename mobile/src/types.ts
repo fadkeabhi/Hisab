@@ -125,10 +125,17 @@ export type HishobRoutes = {
   HishobClose: { dayId: string };
   HishobSearch: undefined;
 };
+export type AttendanceEntry = {
+  status?: 'ALL' | Status;
+  openCalendar?: boolean;
+  requestId?: string;
+};
+export type AttendanceTab =
+  NavigatorScreenParams<{ TodayAttendanceRoot: AttendanceEntry | undefined }> | undefined;
 export type TabRoutes = {
   Hishob: NavigatorScreenParams<HishobRoutes> | undefined;
   Dashboard: undefined;
-  TodayAttendance: undefined;
+  TodayAttendance: AttendanceTab;
   Workers: undefined;
   MyAttendance: undefined;
   Profile: undefined;
@@ -136,7 +143,7 @@ export type TabRoutes = {
 export type Routes = HishobRoutes & {
   Hishob: NavigatorScreenParams<HishobRoutes> | undefined;
   DashboardRoot: undefined;
-  TodayAttendanceRoot: undefined;
+  TodayAttendanceRoot: AttendanceEntry | undefined;
   WorkersRoot: undefined;
   MyAttendanceRoot: undefined;
   ProfileRoot: undefined;
@@ -153,7 +160,7 @@ export type Routes = HishobRoutes & {
   Managers: undefined;
   ShopSettings: undefined;
   WorkerForm: { worker?: Worker; kind?: 'WORKER' | 'MANAGER' } | undefined;
-  TodayAttendance: undefined;
+  TodayAttendance: AttendanceTab;
   WorkerHistory: { worker: Worker; date?: string };
   MyAttendance: undefined;
   Profile: undefined;
